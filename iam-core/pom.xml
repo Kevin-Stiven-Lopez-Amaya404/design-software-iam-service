@@ -9,12 +9,11 @@
     <version>0.1.0</version>
   </parent>
   <artifactId>iam-core</artifactId>
-  <!-- core = dominio + aplicacion PUROS: sin Spring / sin JPA -->
+  <!-- domain + application layer: NO Spring, NO JPA -->
   <dependencies>
     <dependency>
       <groupId>org.junit.jupiter</groupId>
       <artifactId>junit-jupiter</artifactId>
-      <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
