@@ -58,6 +58,9 @@ class RbacControllerTest {
     @MockBean
     private ListRoleFeaturesUseCase listRoleFeaturesUseCase;
 
+    @MockBean
+    private UserApplicationService userService;
+
     private static AuthenticatedIdentity authenticatedIdentity() {
         User user = new User(USER_ID, "admin@sena.edu.co", "hash", "Admin", "Test",
                 ActorType.USER, null, true, LockoutState.clear(), false, null);

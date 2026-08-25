@@ -11,6 +11,11 @@ class BCryptPasswordHasher implements PasswordHasher {
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     @Override
+    public String hash(String rawPassword) {
+        return encoder.encode(rawPassword);
+    }
+
+    @Override
     public boolean matches(String rawPassword, String passwordHash) {
         if (rawPassword == null || passwordHash == null || passwordHash.isBlank()) {
             return false;
@@ -21,10 +26,5 @@ class BCryptPasswordHasher implements PasswordHasher {
             // A stored value that is not a BCrypt hash (e.g. a placeholder seed) is not a match.
             return false;
         }
-    }
-
-    @Override
-    public String hash(String rawPassword) {
-        return encoder.encode(rawPassword);
     }
 }

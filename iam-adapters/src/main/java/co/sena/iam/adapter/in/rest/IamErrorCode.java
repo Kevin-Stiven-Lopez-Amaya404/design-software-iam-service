@@ -41,6 +41,18 @@ final class IamErrorCode {
     /** 400 — reset token absent, already used, or expired. */
     static final String INVALID_RESET_TOKEN = "IAM_INVALID_RESET_TOKEN";
 
+    /** 404 — user not found by the given id. */
+    static final String USER_NOT_FOUND = "IAM_USER_NOT_FOUND";
+
+    /** 409 — email is already registered. */
+    static final String EMAIL_CONFLICT = "IAM_EMAIL_CONFLICT";
+
+    /** 404 — role with the given name does not exist. */
+    static final String ROLE_NOT_FOUND = "IAM_ROLE_NOT_FOUND";
+
+    /** 409 — role is already assigned to the user (same role + training_center). */
+    static final String ROLE_ALREADY_ASSIGNED = "IAM_ROLE_ALREADY_ASSIGNED";
+
     private IamErrorCode() {
     }
 }

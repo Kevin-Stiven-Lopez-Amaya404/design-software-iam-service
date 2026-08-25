@@ -1,15 +1,19 @@
 package co.sena.iam.adapter.in.rest;
 
+import co.sena.iam.application.port.in.AssignRoleCommand;
 import co.sena.iam.application.port.in.GetCurrentUserUseCase;
 import co.sena.iam.application.port.in.ListModulesUseCase;
 import co.sena.iam.application.port.in.ListRoleFeaturesUseCase;
 import co.sena.iam.application.port.in.ListRolesUseCase;
+import co.sena.iam.application.port.in.UserRoleResult;
 import co.sena.iam.contract.api.ModulesApi;
 import co.sena.iam.contract.api.RolesApi;
+import co.sena.iam.contract.model.AssignRoleRequest;
 import co.sena.iam.contract.model.Module;
 import co.sena.iam.contract.model.ModuleFeaturesInner;
 import co.sena.iam.contract.model.Role;
 import co.sena.iam.contract.model.RoleFeature;
+import co.sena.iam.contract.model.UserRole;
 import co.sena.iam.domain.model.RbacModule;
 import co.sena.iam.domain.model.RbacRole;
 import co.sena.iam.domain.model.RoleFeatureEntry;
@@ -38,6 +42,7 @@ class RbacController implements ModulesApi, RolesApi {
     private final ListModulesUseCase listModules;
     private final ListRolesUseCase listRoles;
     private final ListRoleFeaturesUseCase listRoleFeatures;
+    private final UserApplicationService userService;
     private final HttpServletRequest request;
 
     RbacController(
@@ -45,11 +50,13 @@ class RbacController implements ModulesApi, RolesApi {
             ListModulesUseCase listModules,
             ListRolesUseCase listRoles,
             ListRoleFeaturesUseCase listRoleFeatures,
+            UserApplicationService userService,
             HttpServletRequest request) {
         this.getCurrentUser = getCurrentUser;
         this.listModules = listModules;
         this.listRoles = listRoles;
         this.listRoleFeatures = listRoleFeatures;
+        this.userService = userService;
         this.request = request;
     }
 
@@ -89,6 +96,29 @@ class RbacController implements ModulesApi, RolesApi {
                 .map(RbacController::toRoleFeature)
                 .toList();
         return ResponseEntity.ok(body);
+    }
+
+    // ---------------------------------------------------------------- POST /users/{id}/roles (HU-IAM-005 E4)
+
+    @Override
+    public ResponseEntity<UserRole> assignUserRole(UUID id, AssignRoleRequest body) {
+        requireAuthenticated();
+        var cmd = new AssignRoleCommand(
+                id, null, body.getRoleName(),
+                body.getTrainingCenterId(),
+                body.getExpiresAt());
+        UserRoleResult result = userService.assignRole(cmd);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                .body(toUserRole(result));
+    }
+
+    // ---------------------------------------------------------------- DELETE /users/{id}/roles/{role_name}
+
+    @Override
+    public ResponseEntity<Void> revokeUserRole(UUID id, String roleName) {
+        requireAuthenticated();
+        userService.revokeRole(id, roleName, null);
+        return ResponseEntity.noContent().build();
     }
 
     // ---------------------------------------------------------------- auth guard
@@ -133,5 +163,17 @@ class RbacController implements ModulesApi, RolesApi {
                 .featureName(e.featureName())
                 .actionLevel(RoleFeature.ActionLevelEnum.fromValue(e.actionLevel()))
                 .scopeType(RoleFeature.ScopeTypeEnum.fromValue(e.scopeType()));
+    }
+
+    private static UserRole toUserRole(UserRoleResult r) {
+        return new UserRole()
+                .id(r.id())
+                .userId(r.userId())
+                .roleId(r.roleId())
+                .roleName(r.roleName())
+                .trainingCenterId(r.trainingCenterId())
+                .assignedBy(r.assignedBy())
+                .assignedAt(r.assignedAt())
+                .expiresAt(r.expiresAt());
     }
 }

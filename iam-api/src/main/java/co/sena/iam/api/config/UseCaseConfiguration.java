@@ -1,19 +1,28 @@
 package co.sena.iam.api.config;
 
+import co.sena.iam.application.port.in.AssignUserRoleUseCase;
 import co.sena.iam.application.port.in.AuthenticateUserUseCase;
 import co.sena.iam.application.port.in.ConfirmPasswordResetUseCase;
+import co.sena.iam.application.port.in.CreateUserUseCase;
+import co.sena.iam.application.port.in.DeactivateUserUseCase;
 import co.sena.iam.application.port.in.GetCurrentUserUseCase;
+import co.sena.iam.application.port.in.GetUserUseCase;
 import co.sena.iam.application.port.in.ListModulesUseCase;
 import co.sena.iam.application.port.in.ListRoleFeaturesUseCase;
 import co.sena.iam.application.port.in.ListRolesUseCase;
 import co.sena.iam.application.port.in.ListUserSessionsUseCase;
+import co.sena.iam.application.port.in.ListUsersUseCase;
 import co.sena.iam.application.port.in.LogoutUseCase;
 import co.sena.iam.application.port.in.RefreshAccessTokenUseCase;
 import co.sena.iam.application.port.in.RequestPasswordResetUseCase;
+import co.sena.iam.application.port.in.RevokeUserRoleUseCase;
 import co.sena.iam.application.port.in.RevokeUserSessionUseCase;
+import co.sena.iam.application.port.in.UpdateUserUseCase;
 import co.sena.iam.application.port.out.AccessTokenIssuer;
 import co.sena.iam.application.port.out.AccessTokenVerifier;
 import co.sena.iam.application.port.out.LoginAuditRepository;
+import co.sena.iam.application.port.out.OutboxPort;
+import co.sena.iam.application.port.out.PasswordGenerator;
 import co.sena.iam.application.port.out.PasswordHasher;
 import co.sena.iam.application.port.out.PasswordResetRepository;
 import co.sena.iam.application.port.out.RateLimiter;
@@ -21,18 +30,28 @@ import co.sena.iam.application.port.out.RbacCatalogRepository;
 import co.sena.iam.application.port.out.RefreshTokenGenerator;
 import co.sena.iam.application.port.out.RefreshTokenRepository;
 import co.sena.iam.application.port.out.UserAccessRepository;
+import co.sena.iam.application.port.out.UserQueryPort;
 import co.sena.iam.application.port.out.UserRepository;
+import co.sena.iam.application.port.out.UserRolePort;
+import co.sena.iam.application.port.out.UserWritePort;
+import co.sena.iam.application.usecase.AssignUserRole;
 import co.sena.iam.application.usecase.AuthenticateUser;
 import co.sena.iam.application.usecase.ConfirmPasswordReset;
+import co.sena.iam.application.usecase.CreateUser;
+import co.sena.iam.application.usecase.DeactivateUser;
 import co.sena.iam.application.usecase.GetCurrentUser;
+import co.sena.iam.application.usecase.GetUser;
 import co.sena.iam.application.usecase.ListModules;
 import co.sena.iam.application.usecase.ListRoleFeatures;
 import co.sena.iam.application.usecase.ListRoles;
 import co.sena.iam.application.usecase.ListUserSessions;
+import co.sena.iam.application.usecase.ListUsers;
 import co.sena.iam.application.usecase.Logout;
 import co.sena.iam.application.usecase.RefreshAccessToken;
 import co.sena.iam.application.usecase.RequestPasswordReset;
+import co.sena.iam.application.usecase.RevokeUserRole;
 import co.sena.iam.application.usecase.RevokeUserSession;
+import co.sena.iam.application.usecase.UpdateUser;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -129,5 +148,47 @@ class UseCaseConfiguration {
     @Bean
     ListRoleFeaturesUseCase listRoleFeaturesUseCase(RbacCatalogRepository catalog) {
         return new ListRoleFeatures(catalog);
+    }
+
+    // ---------------------------------------------------------------- HU-IAM-005 use cases
+
+    @Bean
+    CreateUserUseCase createUserUseCase(
+            UserRepository users, UserWritePort userWriter, UserRolePort rolePort,
+            PasswordHasher passwordHasher, PasswordGenerator passwordGenerator, OutboxPort outbox) {
+        return new CreateUser(users, userWriter, rolePort, passwordHasher, passwordGenerator, outbox);
+    }
+
+    @Bean
+    GetUserUseCase getUserUseCase(UserRepository users) {
+        return new GetUser(users);
+    }
+
+    @Bean
+    ListUsersUseCase listUsersUseCase(UserQueryPort userQuery) {
+        return new ListUsers(userQuery);
+    }
+
+    @Bean
+    UpdateUserUseCase updateUserUseCase(UserRepository users, UserWritePort userWriter) {
+        return new UpdateUser(users, userWriter);
+    }
+
+    @Bean
+    DeactivateUserUseCase deactivateUserUseCase(
+            UserRepository users, UserWritePort userWriter,
+            RefreshTokenRepository refreshTokens, OutboxPort outbox) {
+        return new DeactivateUser(users, userWriter, refreshTokens, outbox);
+    }
+
+    @Bean
+    AssignUserRoleUseCase assignUserRoleUseCase(
+            UserRepository users, UserRolePort rolePort, OutboxPort outbox) {
+        return new AssignUserRole(users, rolePort, outbox);
+    }
+
+    @Bean
+    RevokeUserRoleUseCase revokeUserRoleUseCase(UserRepository users, UserRolePort rolePort) {
+        return new RevokeUserRole(users, rolePort);
     }
 }

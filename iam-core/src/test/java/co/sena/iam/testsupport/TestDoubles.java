@@ -92,6 +92,10 @@ public final class TestDoubles {
         }
 
         @Override
+        public void revokeAllActiveForUser(UUID userId, Instant revokedAt) {
+        }
+
+        @Override
         public List<RefreshTokenRecord> findByUserId(UUID userId) {
             return saved.stream().filter(t -> t.userId().equals(userId)).toList();
         }
@@ -128,6 +132,10 @@ public final class TestDoubles {
 
             @Override
             public void revoke(UUID sessionId, Instant revokedAt) {
+            }
+
+            @Override
+            public void revokeAllActiveForUser(UUID userId, Instant revokedAt) {
             }
 
             @Override
