@@ -26,6 +26,9 @@ final class IamErrorCode {
     /** 400 — payload rejected by validation. */
     static final String VALIDATION_ERROR = "VALIDATION_ERROR";
 
+    /** 404 — requested resource does not exist. */
+    static final String NOT_FOUND = "NOT_FOUND";
+
     private IamErrorCode() {
     }
 }
