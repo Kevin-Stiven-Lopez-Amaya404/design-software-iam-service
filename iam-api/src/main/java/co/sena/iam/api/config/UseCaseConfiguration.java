@@ -2,6 +2,9 @@ package co.sena.iam.api.config;
 
 import co.sena.iam.application.port.in.AuthenticateUserUseCase;
 import co.sena.iam.application.port.in.GetCurrentUserUseCase;
+import co.sena.iam.application.port.in.ListModulesUseCase;
+import co.sena.iam.application.port.in.ListRoleFeaturesUseCase;
+import co.sena.iam.application.port.in.ListRolesUseCase;
 import co.sena.iam.application.port.in.ListUserSessionsUseCase;
 import co.sena.iam.application.port.in.LogoutUseCase;
 import co.sena.iam.application.port.in.RefreshAccessTokenUseCase;
@@ -10,12 +13,16 @@ import co.sena.iam.application.port.out.AccessTokenIssuer;
 import co.sena.iam.application.port.out.AccessTokenVerifier;
 import co.sena.iam.application.port.out.LoginAuditRepository;
 import co.sena.iam.application.port.out.PasswordHasher;
+import co.sena.iam.application.port.out.RbacCatalogRepository;
 import co.sena.iam.application.port.out.RefreshTokenGenerator;
 import co.sena.iam.application.port.out.RefreshTokenRepository;
 import co.sena.iam.application.port.out.UserAccessRepository;
 import co.sena.iam.application.port.out.UserRepository;
 import co.sena.iam.application.usecase.AuthenticateUser;
 import co.sena.iam.application.usecase.GetCurrentUser;
+import co.sena.iam.application.usecase.ListModules;
+import co.sena.iam.application.usecase.ListRoleFeatures;
+import co.sena.iam.application.usecase.ListRoles;
 import co.sena.iam.application.usecase.ListUserSessions;
 import co.sena.iam.application.usecase.Logout;
 import co.sena.iam.application.usecase.RefreshAccessToken;
@@ -80,5 +87,20 @@ class UseCaseConfiguration {
     @Bean
     RevokeUserSessionUseCase revokeUserSessionUseCase(RefreshTokenRepository refreshTokens, Clock clock) {
         return new RevokeUserSession(refreshTokens, clock);
+    }
+
+    @Bean
+    ListModulesUseCase listModulesUseCase(RbacCatalogRepository catalog) {
+        return new ListModules(catalog);
+    }
+
+    @Bean
+    ListRolesUseCase listRolesUseCase(RbacCatalogRepository catalog) {
+        return new ListRoles(catalog);
+    }
+
+    @Bean
+    ListRoleFeaturesUseCase listRoleFeaturesUseCase(RbacCatalogRepository catalog) {
+        return new ListRoleFeatures(catalog);
     }
 }
