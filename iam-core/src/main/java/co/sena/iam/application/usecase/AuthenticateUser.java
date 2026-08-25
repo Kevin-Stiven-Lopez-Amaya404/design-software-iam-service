@@ -12,6 +12,8 @@ import co.sena.iam.application.port.out.UserAccessRepository;
 import co.sena.iam.application.port.out.UserRepository;
 import co.sena.iam.domain.exception.AccountLockedException;
 import co.sena.iam.domain.exception.InvalidCredentialsException;
+import co.sena.iam.domain.exception.PasswordChangeRequiredException;
+import co.sena.iam.domain.exception.TemporaryPasswordExpiredException;
 import co.sena.iam.domain.model.LockoutPolicy;
 import co.sena.iam.domain.model.LockoutState;
 import co.sena.iam.domain.model.LoginAttempt;
@@ -97,6 +99,18 @@ public final class AuthenticateUser implements AuthenticateUserUseCase {
         if (!user.active()) {
             audit(user.id(), email, LoginOutcome.INVALID_PASSWORD, command, now);
             throw new InvalidCredentialsException();
+        }
+
+        // E2 — temporary password expired (must request a new reset before logging in).
+        if (user.mustChangePassword() && user.isTemporaryPasswordExpiredAt(now)) {
+            audit(user.id(), email, LoginOutcome.INVALID_PASSWORD, command, now);
+            throw new TemporaryPasswordExpiredException();
+        }
+
+        // E1 — first login with a temporary password: force change before issuing tokens.
+        if (user.mustChangePassword()) {
+            audit(user.id(), email, LoginOutcome.INVALID_PASSWORD, command, now);
+            throw new PasswordChangeRequiredException();
         }
 
         return issueSession(user, command, now);

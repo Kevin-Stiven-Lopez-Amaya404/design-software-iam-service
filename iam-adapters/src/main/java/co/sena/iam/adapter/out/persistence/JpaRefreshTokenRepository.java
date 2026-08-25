@@ -65,4 +65,11 @@ class JpaRefreshTokenRepository implements RefreshTokenRepository {
                 .map(RefreshTokenEntity::toDomain)
                 .toList();
     }
+
+    @Override
+    @Transactional
+    public void revokeAllByUserId(UUID userId, Instant revokedAt) {
+        jpaRepo.findByUserIdAndRevokedFalse(userId).forEach(entity ->
+                entity.revoke(OffsetDateTime.ofInstant(revokedAt, ZoneOffset.UTC)));
+    }
 }

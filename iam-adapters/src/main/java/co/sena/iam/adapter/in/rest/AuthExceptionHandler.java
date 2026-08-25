@@ -5,7 +5,11 @@ import co.sena.iam.contract.model.Login400ResponseErrorDetailsInner;
 import co.sena.iam.domain.exception.AccountLockedException;
 import co.sena.iam.domain.exception.InvalidCredentialsException;
 import co.sena.iam.domain.exception.InvalidRefreshTokenException;
+import co.sena.iam.domain.exception.InvalidResetTokenException;
+import co.sena.iam.domain.exception.PasswordChangeRequiredException;
+import co.sena.iam.domain.exception.RateLimitExceededException;
 import co.sena.iam.domain.exception.SessionNotFoundException;
+import co.sena.iam.domain.exception.TemporaryPasswordExpiredException;
 import co.sena.iam.domain.exception.UnauthenticatedException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -71,6 +75,46 @@ class AuthExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiErrors.of(
                 IamErrorCode.SESSION_NOT_FOUND,
                 "Sesión no encontrada.",
+                traceId));
+    }
+
+    @ExceptionHandler(PasswordChangeRequiredException.class)
+    ResponseEntity<Login400Response> handlePasswordChangeRequired(HttpServletRequest request) {
+        String traceId = ApiErrors.traceId(request);
+        log.info("Login refused: must change temporary password (trace {})", traceId);
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(ApiErrors.of(
+                IamErrorCode.PASSWORD_CHANGE_REQUIRED,
+                "Debes cambiar tu contraseña temporal antes de continuar.",
+                traceId));
+    }
+
+    @ExceptionHandler(TemporaryPasswordExpiredException.class)
+    ResponseEntity<Login400Response> handleTemporaryPasswordExpired(HttpServletRequest request) {
+        String traceId = ApiErrors.traceId(request);
+        log.info("Login refused: temporary password expired (trace {})", traceId);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiErrors.of(
+                IamErrorCode.TEMPORARY_PASSWORD_EXPIRED,
+                "Tu contraseña temporal ha expirado. Solicita un nuevo reset.",
+                traceId));
+    }
+
+    @ExceptionHandler(RateLimitExceededException.class)
+    ResponseEntity<Login400Response> handleRateLimitExceeded(HttpServletRequest request) {
+        String traceId = ApiErrors.traceId(request);
+        log.info("Password reset rate-limited (trace {})", traceId);
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(ApiErrors.of(
+                IamErrorCode.RATE_LIMIT_EXCEEDED,
+                "Demasiadas solicitudes. Intenta más tarde.",
+                traceId));
+    }
+
+    @ExceptionHandler(InvalidResetTokenException.class)
+    ResponseEntity<Login400Response> handleInvalidResetToken(HttpServletRequest request) {
+        String traceId = ApiErrors.traceId(request);
+        log.info("Password reset confirm refused: invalid token (trace {})", traceId);
+        return ResponseEntity.badRequest().body(ApiErrors.of(
+                IamErrorCode.INVALID_RESET_TOKEN,
+                "El token de reset es inválido, ya fue usado o expiró.",
                 traceId));
     }
 

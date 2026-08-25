@@ -60,7 +60,7 @@ class RbacControllerTest {
 
     private static AuthenticatedIdentity authenticatedIdentity() {
         User user = new User(USER_ID, "admin@sena.edu.co", "hash", "Admin", "Test",
-                ActorType.USER, null, true, LockoutState.clear());
+                ActorType.USER, null, true, LockoutState.clear(), false, null);
         UserAccess access = new UserAccess(List.of(), List.of("IDENTITY_ROLE_VIEW"), List.of("MOD_IDENTITY"));
         return new AuthenticatedIdentity(user, access);
     }

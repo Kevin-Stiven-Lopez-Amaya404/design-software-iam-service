@@ -24,7 +24,17 @@ public final class TestDoubles {
     public static final String HASH_PREFIX = "hashed:";
 
     public static PasswordHasher passwordHasher() {
-        return (raw, hash) -> (HASH_PREFIX + raw).equals(hash);
+        return new PasswordHasher() {
+            @Override
+            public boolean matches(String raw, String hash) {
+                return (HASH_PREFIX + raw).equals(hash);
+            }
+
+            @Override
+            public String hash(String raw) {
+                return HASH_PREFIX + raw;
+            }
+        };
     }
 
     public static String hashOf(String rawPassword) {
@@ -85,6 +95,17 @@ public final class TestDoubles {
         public List<RefreshTokenRecord> findByUserId(UUID userId) {
             return saved.stream().filter(t -> t.userId().equals(userId)).toList();
         }
+
+        @Override
+        public void revokeAllByUserId(UUID userId, Instant revokedAt) {
+            revokedUserIds.add(userId);
+        }
+
+        public boolean wereSessionsRevokedFor(UUID userId) {
+            return revokedUserIds.contains(userId);
+        }
+
+        private final java.util.Set<UUID> revokedUserIds = new java.util.HashSet<>();
     }
 
     /** Fails the test if a refresh token is persisted on a path that must not create a session. */
@@ -112,6 +133,10 @@ public final class TestDoubles {
             @Override
             public List<RefreshTokenRecord> findByUserId(UUID userId) {
                 return List.of();
+            }
+
+            @Override
+            public void revokeAllByUserId(UUID userId, Instant revokedAt) {
             }
         };
     }

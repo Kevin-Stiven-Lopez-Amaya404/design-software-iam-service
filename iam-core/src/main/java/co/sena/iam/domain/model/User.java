@@ -19,7 +19,9 @@ public record User(
         ActorType actorType,
         UUID actorId,
         boolean active,
-        LockoutState lockout) {
+        LockoutState lockout,
+        boolean mustChangePassword,
+        Instant temporaryPasswordExpiresAt) {
 
     public User {
         Objects.requireNonNull(id, "id");
@@ -40,7 +42,13 @@ public record User(
         return lockout.isLockedAt(now);
     }
 
+    /** True when the temporary password has passed its 72-hour window. */
+    public boolean isTemporaryPasswordExpiredAt(Instant now) {
+        return temporaryPasswordExpiresAt != null && now.isAfter(temporaryPasswordExpiresAt);
+    }
+
     public User withLockout(LockoutState newLockout) {
-        return new User(id, email, passwordHash, firstName, lastName, actorType, actorId, active, newLockout);
+        return new User(id, email, passwordHash, firstName, lastName, actorType, actorId, active,
+                newLockout, mustChangePassword, temporaryPasswordExpiresAt);
     }
 }

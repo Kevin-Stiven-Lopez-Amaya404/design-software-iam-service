@@ -19,4 +19,10 @@ public interface UserRepository {
 
     /** Persists the counter and lock computed by {@code LockoutPolicy}. */
     void applyLockoutState(UUID userId, LockoutState state);
+
+    /**
+     * Replaces the password hash and clears {@code must_change_password} +
+     * {@code password_temporary_expires_at} in one atomic write.
+     */
+    void updatePassword(UUID userId, String newPasswordHash, Instant updatedAt);
 }

@@ -46,6 +46,12 @@ class UserEntity {
     @Column(name = "locked_until")
     private OffsetDateTime lockedUntil;
 
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword;
+
+    @Column(name = "password_temporary_expires_at")
+    private OffsetDateTime temporaryPasswordExpiresAt;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -93,6 +99,14 @@ class UserEntity {
 
     OffsetDateTime getLockedUntil() {
         return lockedUntil;
+    }
+
+    boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    OffsetDateTime getTemporaryPasswordExpiresAt() {
+        return temporaryPasswordExpiresAt;
     }
 
     OffsetDateTime getLastLoginAt() {

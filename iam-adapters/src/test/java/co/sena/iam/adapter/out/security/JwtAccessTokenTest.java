@@ -56,7 +56,7 @@ class JwtAccessTokenTest {
 
     private static User user() {
         return new User(USER_ID, "ana@sena.edu.co", "irrelevant", "Ana", "Ríos",
-                ActorType.INSTRUCTOR, null, true, LockoutState.clear());
+                ActorType.INSTRUCTOR, null, true, LockoutState.clear(), false, null);
     }
 
     private static UserAccess access() {

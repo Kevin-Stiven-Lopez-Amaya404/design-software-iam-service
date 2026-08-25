@@ -38,4 +38,18 @@ interface UserJpaRepository extends JpaRepository<UserEntity, UUID> {
             @Param("attempts") short attempts,
             @Param("lockedUntil") OffsetDateTime lockedUntil,
             @Param("at") OffsetDateTime at);
+
+    @Modifying
+    @Query("""
+            update UserEntity u
+               set u.passwordHash = :hash,
+                   u.mustChangePassword = false,
+                   u.temporaryPasswordExpiresAt = null,
+                   u.updatedAt = :at
+             where u.id = :id
+            """)
+    int updatePasswordAndClearMustChange(
+            @Param("id") UUID id,
+            @Param("hash") String hash,
+            @Param("at") OffsetDateTime at);
 }

@@ -45,6 +45,13 @@ public final class InMemoryUserRepository implements UserRepository {
         byId.computeIfPresent(userId, (id, u) -> u.withLockout(state));
     }
 
+    @Override
+    public void updatePassword(UUID userId, String newPasswordHash, Instant updatedAt) {
+        byId.computeIfPresent(userId, (id, u) -> new User(
+                u.id(), u.email(), newPasswordHash, u.firstName(), u.lastName(),
+                u.actorType(), u.actorId(), u.active(), u.lockout(), false, null));
+    }
+
     public LockoutState lockoutOf(UUID userId) {
         return byId.get(userId).lockout();
     }

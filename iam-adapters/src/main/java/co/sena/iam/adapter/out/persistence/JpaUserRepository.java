@@ -47,6 +47,12 @@ class JpaUserRepository implements UserRepository {
 
     @Override
     @Transactional
+    public void updatePassword(UUID userId, String newPasswordHash, Instant updatedAt) {
+        users.updatePasswordAndClearMustChange(userId, newPasswordHash, updatedAt.atOffset(ZoneOffset.UTC));
+    }
+
+    @Override
+    @Transactional
     public void applyLockoutState(UUID userId, LockoutState state) {
         OffsetDateTime lockedUntil = state.lockedUntil() == null
                 ? null
@@ -60,6 +66,8 @@ class JpaUserRepository implements UserRepository {
 
     private static User toDomain(UserEntity entity) {
         Instant lockedUntil = entity.getLockedUntil() == null ? null : entity.getLockedUntil().toInstant();
+        Instant tempExpires = entity.getTemporaryPasswordExpiresAt() == null
+                ? null : entity.getTemporaryPasswordExpiresAt().toInstant();
         return new User(
                 entity.getId(),
                 entity.getEmail(),
@@ -69,6 +77,8 @@ class JpaUserRepository implements UserRepository {
                 ActorType.valueOf(entity.getActorType()),
                 entity.getActorId(),
                 entity.isActive(),
-                new LockoutState(entity.getFailedAttempts(), lockedUntil));
+                new LockoutState(entity.getFailedAttempts(), lockedUntil),
+                entity.isMustChangePassword(),
+                tempExpires);
     }
 }
