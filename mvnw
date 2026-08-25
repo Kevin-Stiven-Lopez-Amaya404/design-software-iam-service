@@ -8,13 +8,16 @@ WRAPPER_PROPERTIES="$SCRIPT_DIR/.mvn/wrapper/maven-wrapper.properties"
 DISTRIBUTION_URL="$(grep distributionUrl "$WRAPPER_PROPERTIES" | cut -d= -f2- | tr -d '\r')"
 DISTRIBUTION_FILENAME="$(basename "$DISTRIBUTION_URL")"
 DISTRIBUTION_NAME="${DISTRIBUTION_FILENAME%.zip}"
+# apache-maven-X.Y.Z-bin.zip unpacks into apache-maven-X.Y.Z (no -bin suffix)
+DISTRIBUTION_DIR="${DISTRIBUTION_NAME%-bin}"
 
-CACHE_DIR="${MAVEN_USER_HOME:-$HOME/.m2}/wrapper/dists/$DISTRIBUTION_NAME"
+DISTS_DIR="${MAVEN_USER_HOME:-$HOME/.m2}/wrapper/dists"
+CACHE_DIR="$DISTS_DIR/$DISTRIBUTION_DIR"
 
 if [ ! -f "$CACHE_DIR/bin/mvn" ]; then
   echo "[mvnw] Downloading $DISTRIBUTION_URL" >&2
-  mkdir -p "$CACHE_DIR"
-  TMP="$(dirname "$CACHE_DIR")/$DISTRIBUTION_FILENAME"
+  mkdir -p "$DISTS_DIR"
+  TMP="$DISTS_DIR/$DISTRIBUTION_FILENAME"
   if command -v curl > /dev/null 2>&1; then
     curl -fsSL -o "$TMP" "$DISTRIBUTION_URL"
   elif command -v wget > /dev/null 2>&1; then
@@ -22,7 +25,7 @@ if [ ! -f "$CACHE_DIR/bin/mvn" ]; then
   else
     echo "[mvnw] curl or wget required" >&2; exit 1
   fi
-  unzip -q "$TMP" -d "$(dirname "$CACHE_DIR")"
+  unzip -q "$TMP" -d "$DISTS_DIR"
   rm -f "$TMP"
 fi
 
