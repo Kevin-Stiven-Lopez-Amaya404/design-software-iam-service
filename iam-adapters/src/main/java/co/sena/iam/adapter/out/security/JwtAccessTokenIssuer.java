@@ -11,7 +11,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * RS256 access token, as declared by the contract ({@code bearerAuth}: JWT RS256 issued by
- * iam-service and verified locally through JWKS).
+ * iam-service and verified locally through JWKS). Embeds {@code sid} (session ID) so the
+ * logout endpoint can identify and revoke the specific session.
  */
 @Component
 class JwtAccessTokenIssuer implements AccessTokenIssuer {
@@ -23,7 +24,7 @@ class JwtAccessTokenIssuer implements AccessTokenIssuer {
     }
 
     @Override
-    public String issue(User user, UserAccess access, Instant issuedAt, Instant expiresAt) {
+    public String issue(User user, UserAccess access, UUID sessionId, Instant issuedAt, Instant expiresAt) {
         return Jwts.builder()
                 .header().keyId(keys.keyId()).and()
                 .id(UUID.randomUUID().toString())
@@ -31,6 +32,7 @@ class JwtAccessTokenIssuer implements AccessTokenIssuer {
                 .subject(user.id().toString())
                 .issuedAt(Date.from(issuedAt))
                 .expiration(Date.from(expiresAt))
+                .claim("sid", sessionId.toString())
                 .claim("email", user.email())
                 .claim("name", user.fullName())
                 .claim("actor_type", user.actorType().name())
