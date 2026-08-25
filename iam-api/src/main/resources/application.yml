@@ -15,6 +15,14 @@ spring:
     init:
       mode: never
 
+# Signing material for the RS256 access tokens. No defaults: a missing secret must stop
+# the service at startup, never fall back to something guessable.
+iam:
+  jwt:
+    private-key: ${IAM_JWT_PRIVATE_KEY}
+    issuer: ${IAM_JWT_ISSUER}
+    key-id: ${IAM_JWT_KEY_ID:iam-rsa-1}
+
 server:
   port: 8080
 
