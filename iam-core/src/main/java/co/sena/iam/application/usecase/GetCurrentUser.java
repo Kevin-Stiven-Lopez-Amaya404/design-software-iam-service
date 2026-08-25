@@ -28,7 +28,7 @@ public final class GetCurrentUser implements GetCurrentUserUseCase {
 
     @Override
     public AuthenticatedIdentity currentUser(String accessToken) {
-        UUID userId = accessTokenVerifier.verifyAndExtractUserId(accessToken);
+        UUID userId = accessTokenVerifier.verify(accessToken).userId();
         User user = users.findById(userId)
                 .orElseThrow(() -> new UnauthenticatedException("Token subject no longer exists"));
         if (!user.active()) {

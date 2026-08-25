@@ -5,13 +5,18 @@ import co.sena.iam.application.port.in.AuthenticatedIdentity;
 import co.sena.iam.application.port.in.AuthenticationResult;
 import co.sena.iam.application.port.in.GetCurrentUserUseCase;
 import co.sena.iam.application.port.in.LoginCommand;
+import co.sena.iam.application.port.in.LogoutUseCase;
+import co.sena.iam.application.port.in.RefreshAccessTokenUseCase;
+import co.sena.iam.application.port.out.AccessTokenVerifier;
 import co.sena.iam.contract.api.AuthApi;
 import co.sena.iam.contract.model.LoginRequest;
 import co.sena.iam.contract.model.MeResponse;
 import co.sena.iam.contract.model.MeResponseRolesInner;
+import co.sena.iam.contract.model.RefreshRequest;
 import co.sena.iam.contract.model.TokenResponse;
 import co.sena.iam.contract.model.TokenResponseUser;
 import co.sena.iam.domain.model.RoleAssignment;
+import co.sena.iam.domain.model.TokenClaims;
 import co.sena.iam.domain.model.User;
 import co.sena.iam.domain.model.UserAccess;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,12 +26,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * HU-IAM-001 — {@code POST /auth/login} (E1/E2/E3) and {@code GET /auth/me} (E4).
- *
- * <p>Implements the generated {@link AuthApi}; the operations this HU does not cover keep the
- * interface's default {@code 501}. The class-level mapping supplies the {@code /api/v1} base
- * path declared by the contract's {@code servers} entry, without moving the probes the
- * template exposes at the root.
+ * HU-IAM-001 E1-E4 and HU-IAM-002 E1-E2.
+ * {@code POST /auth/login}, {@code GET /auth/me}, {@code POST /auth/refresh},
+ * {@code POST /auth/logout}.
  */
 @RestController
 @RequestMapping("/api/v1")
@@ -37,14 +39,23 @@ class AuthController implements AuthApi {
 
     private final AuthenticateUserUseCase authenticateUser;
     private final GetCurrentUserUseCase getCurrentUser;
+    private final RefreshAccessTokenUseCase refreshAccessToken;
+    private final LogoutUseCase logout;
+    private final AccessTokenVerifier tokenVerifier;
     private final HttpServletRequest request;
 
     AuthController(
             AuthenticateUserUseCase authenticateUser,
             GetCurrentUserUseCase getCurrentUser,
+            RefreshAccessTokenUseCase refreshAccessToken,
+            LogoutUseCase logout,
+            AccessTokenVerifier tokenVerifier,
             HttpServletRequest request) {
         this.authenticateUser = authenticateUser;
         this.getCurrentUser = getCurrentUser;
+        this.refreshAccessToken = refreshAccessToken;
+        this.logout = logout;
+        this.tokenVerifier = tokenVerifier;
         this.request = request;
     }
 
@@ -57,12 +68,20 @@ class AuthController implements AuthApi {
                 header("User-Agent"),
                 truncate(header("X-Device-Hint"), DEVICE_HINT_COLUMN_LENGTH)));
 
-        return ResponseEntity.ok(new TokenResponse()
-                .accessToken(result.accessToken())
-                .refreshToken(result.refreshToken())
-                .tokenType(TokenResponse.TokenTypeEnum.BEARER)
-                .expiresIn(Math.toIntExact(result.expiresInSeconds()))
-                .user(authUser(result.user(), result.access())));
+        return ResponseEntity.ok(toTokenResponse(result));
+    }
+
+    @Override
+    public ResponseEntity<TokenResponse> refreshToken(RefreshRequest refreshRequest) {
+        AuthenticationResult result = refreshAccessToken.refresh(refreshRequest.getRefreshToken());
+        return ResponseEntity.ok(toTokenResponse(result));
+    }
+
+    @Override
+    public ResponseEntity<Void> logout() {
+        TokenClaims claims = tokenVerifier.verify(BearerToken.from(request));
+        this.logout.logout(claims.sessionId());
+        return ResponseEntity.noContent().build();
     }
 
     @Override
@@ -80,6 +99,15 @@ class AuthController implements AuthApi {
                 .roles(roles(access))
                 .features(access.featureCodes())
                 .modules(access.moduleCodes()));
+    }
+
+    private static TokenResponse toTokenResponse(AuthenticationResult result) {
+        return new TokenResponse()
+                .accessToken(result.accessToken())
+                .refreshToken(result.refreshToken())
+                .tokenType(TokenResponse.TokenTypeEnum.BEARER)
+                .expiresIn(Math.toIntExact(result.expiresInSeconds()))
+                .user(authUser(result.user(), result.access()));
     }
 
     private static TokenResponseUser authUser(User user, UserAccess access) {
@@ -104,7 +132,6 @@ class AuthController implements AuthApi {
                 .trainingCenterId(assignment.trainingCenterId());
     }
 
-    /** First hop of {@code X-Forwarded-For} when the gateway set it, the socket peer otherwise. */
     private String clientIp() {
         String forwarded = header("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {

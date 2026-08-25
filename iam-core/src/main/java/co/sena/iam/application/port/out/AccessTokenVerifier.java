@@ -1,13 +1,12 @@
 package co.sena.iam.application.port.out;
 
-import java.util.UUID;
+import co.sena.iam.domain.model.TokenClaims;
 
-/** Outbound port that validates an access token and returns its subject. */
+/** Verify a bearer access token and extract its claims. */
 public interface AccessTokenVerifier {
 
     /**
-     * @throws co.sena.iam.domain.exception.UnauthenticatedException signature, shape or
-     *                                                              expiry rejected the token
+     * @throws co.sena.iam.domain.exception.UnauthenticatedException token absent, malformed or expired
      */
-    UUID verifyAndExtractUserId(String accessToken);
+    TokenClaims verify(String accessToken);
 }

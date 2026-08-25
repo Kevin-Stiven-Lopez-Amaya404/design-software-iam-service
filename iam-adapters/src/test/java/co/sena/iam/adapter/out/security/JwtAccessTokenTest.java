@@ -9,6 +9,7 @@ import co.sena.iam.domain.exception.UnauthenticatedException;
 import co.sena.iam.domain.model.ActorType;
 import co.sena.iam.domain.model.LockoutState;
 import co.sena.iam.domain.model.RoleAssignment;
+import co.sena.iam.domain.model.TokenClaims;
 import co.sena.iam.domain.model.TokenPolicy;
 import co.sena.iam.domain.model.User;
 import co.sena.iam.domain.model.UserAccess;
@@ -28,7 +29,7 @@ class JwtAccessTokenTest {
 
     private static final String ISSUER = "https://iam.test.sena.edu.co";
     private static final UUID USER_ID = UUID.fromString("c0000000-0000-0000-0000-000000000042");
-    private static final Instant NOW = Instant.parse("2026-08-25T12:00:00Z");
+    private static final UUID SESSION_ID = UUID.fromString("a0000000-0000-0000-0000-000000000001");
 
     private static String privateKeyPem;
     private static String otherPrivateKeyPem;
@@ -66,24 +67,28 @@ class JwtAccessTokenTest {
     }
 
     @Test
-    @DisplayName("a freshly issued token verifies back to its subject")
-    void issuedTokenVerifiesToItsSubject() {
+    @DisplayName("a freshly issued token verifies back to its subject and session id")
+    void issuedTokenVerifiesToItsSubjectAndSession() {
         RsaSigningKeys signingKeys = keys(privateKeyPem);
+        Instant now = Instant.now();
         String token = new JwtAccessTokenIssuer(signingKeys)
-                .issue(user(), access(), NOW, NOW.plus(TokenPolicy.ACCESS_TOKEN_TTL));
+                .issue(user(), access(), SESSION_ID, now, now.plus(TokenPolicy.ACCESS_TOKEN_TTL));
 
-        assertEquals(USER_ID, new JwtAccessTokenVerifier(signingKeys).verifyAndExtractUserId(token));
+        TokenClaims claims = new JwtAccessTokenVerifier(signingKeys).verify(token);
+        assertEquals(USER_ID, claims.userId());
+        assertEquals(SESSION_ID, claims.sessionId());
         assertEquals(3, token.split("\\.").length, "a JWS has three parts");
     }
 
     @Test
     @DisplayName("a token signed by another key is rejected")
     void rejectsTokenSignedByAnotherKey() {
+        Instant now = Instant.now();
         String forged = new JwtAccessTokenIssuer(keys(otherPrivateKeyPem))
-                .issue(user(), access(), NOW, NOW.plus(TokenPolicy.ACCESS_TOKEN_TTL));
+                .issue(user(), access(), SESSION_ID, now, now.plus(TokenPolicy.ACCESS_TOKEN_TTL));
         JwtAccessTokenVerifier verifier = new JwtAccessTokenVerifier(keys(privateKeyPem));
 
-        assertThrows(UnauthenticatedException.class, () -> verifier.verifyAndExtractUserId(forged));
+        assertThrows(UnauthenticatedException.class, () -> verifier.verify(forged));
     }
 
     @Test
@@ -92,10 +97,10 @@ class JwtAccessTokenTest {
         RsaSigningKeys signingKeys = keys(privateKeyPem);
         Instant longAgo = Instant.now().minusSeconds(3600);
         String expired = new JwtAccessTokenIssuer(signingKeys)
-                .issue(user(), access(), longAgo, longAgo.plusSeconds(60));
+                .issue(user(), access(), SESSION_ID, longAgo, longAgo.plusSeconds(60));
 
         assertThrows(UnauthenticatedException.class,
-                () -> new JwtAccessTokenVerifier(signingKeys).verifyAndExtractUserId(expired));
+                () -> new JwtAccessTokenVerifier(signingKeys).verify(expired));
     }
 
     @Test
@@ -103,8 +108,8 @@ class JwtAccessTokenTest {
     void rejectsMissingToken() {
         JwtAccessTokenVerifier verifier = new JwtAccessTokenVerifier(keys(privateKeyPem));
 
-        assertThrows(UnauthenticatedException.class, () -> verifier.verifyAndExtractUserId(null));
-        assertThrows(UnauthenticatedException.class, () -> verifier.verifyAndExtractUserId("  "));
+        assertThrows(UnauthenticatedException.class, () -> verifier.verify(null));
+        assertThrows(UnauthenticatedException.class, () -> verifier.verify("  "));
     }
 
     @Test

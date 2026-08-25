@@ -4,6 +4,8 @@ import co.sena.iam.contract.model.Login400Response;
 import co.sena.iam.contract.model.Login400ResponseErrorDetailsInner;
 import co.sena.iam.domain.exception.AccountLockedException;
 import co.sena.iam.domain.exception.InvalidCredentialsException;
+import co.sena.iam.domain.exception.InvalidRefreshTokenException;
+import co.sena.iam.domain.exception.SessionNotFoundException;
 import co.sena.iam.domain.exception.UnauthenticatedException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -16,17 +18,13 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 /**
- * Maps authentication failures onto the shared error envelope.
- *
- * <p>Messages stay generic on purpose: the answer to a login must not tell an attacker
- * whether an email exists.
+ * Maps authentication and session failures onto the shared error envelope.
  */
-@RestControllerAdvice(assignableTypes = AuthController.class)
+@RestControllerAdvice(assignableTypes = {AuthController.class, SessionController.class})
 class AuthExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(AuthExceptionHandler.class);
 
-    /** 423 Locked — the status the contract documents for {@code IAM_ACCOUNT_LOCKED}. */
     @ExceptionHandler(AccountLockedException.class)
     ResponseEntity<Login400Response> handleAccountLocked(
             AccountLockedException exception, HttpServletRequest request) {
@@ -48,12 +46,31 @@ class AuthExceptionHandler {
                 traceId));
     }
 
+    @ExceptionHandler(InvalidRefreshTokenException.class)
+    ResponseEntity<Login400Response> handleInvalidRefreshToken(HttpServletRequest request) {
+        String traceId = ApiErrors.traceId(request);
+        log.info("Refresh refused: token invalid, expired or revoked (trace {})", traceId);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiErrors.of(
+                IamErrorCode.TOKEN_REVOKED,
+                "El refresh token es inválido, expiró o fue revocado.",
+                traceId));
+    }
+
     @ExceptionHandler(UnauthenticatedException.class)
     ResponseEntity<Login400Response> handleUnauthenticated(HttpServletRequest request) {
         String traceId = ApiErrors.traceId(request);
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiErrors.of(
                 IamErrorCode.UNAUTHENTICATED,
                 "Token ausente, inválido o expirado.",
+                traceId));
+    }
+
+    @ExceptionHandler(SessionNotFoundException.class)
+    ResponseEntity<Login400Response> handleSessionNotFound(HttpServletRequest request) {
+        String traceId = ApiErrors.traceId(request);
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiErrors.of(
+                IamErrorCode.SESSION_NOT_FOUND,
+                "Sesión no encontrada.",
                 traceId));
     }
 
@@ -70,7 +87,6 @@ class AuthExceptionHandler {
                 details));
     }
 
-    /** Bean-validation constraint name ("NotNull") as a language-independent issue code. */
     private static String issueCodeOf(String constraintName) {
         if (constraintName == null) {
             return "INVALID";

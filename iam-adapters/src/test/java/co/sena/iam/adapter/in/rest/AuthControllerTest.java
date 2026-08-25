@@ -13,6 +13,9 @@ import co.sena.iam.application.port.in.AuthenticatedIdentity;
 import co.sena.iam.application.port.in.AuthenticationResult;
 import co.sena.iam.application.port.in.GetCurrentUserUseCase;
 import co.sena.iam.application.port.in.LoginCommand;
+import co.sena.iam.application.port.in.LogoutUseCase;
+import co.sena.iam.application.port.in.RefreshAccessTokenUseCase;
+import co.sena.iam.application.port.out.AccessTokenVerifier;
 import co.sena.iam.domain.exception.AccountLockedException;
 import co.sena.iam.domain.exception.InvalidCredentialsException;
 import co.sena.iam.domain.exception.UnauthenticatedException;
@@ -50,6 +53,15 @@ class AuthControllerTest {
 
     @MockBean
     private GetCurrentUserUseCase getCurrentUser;
+
+    @MockBean
+    private RefreshAccessTokenUseCase refreshAccessToken;
+
+    @MockBean
+    private LogoutUseCase logout;
+
+    @MockBean
+    private AccessTokenVerifier tokenVerifier;
 
     private static User user() {
         return new User(USER_ID, "ana@sena.edu.co", "irrelevant", "Ana", "Ríos",

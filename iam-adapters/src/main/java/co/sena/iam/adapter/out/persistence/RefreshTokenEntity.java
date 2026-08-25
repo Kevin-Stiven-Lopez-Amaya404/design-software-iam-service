@@ -1,10 +1,12 @@
 package co.sena.iam.adapter.out.persistence;
 
+import co.sena.iam.domain.model.RefreshTokenRecord;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.UUID;
 
 /** Row of {@code session.refresh_token}. Stores the digest, never the token itself. */
@@ -59,5 +61,28 @@ class RefreshTokenEntity {
         this.expiresAt = expiresAt;
         this.createdAt = createdAt;
         this.revoked = false;
+    }
+
+    UUID getId() { return id; }
+    UUID getUserId() { return userId; }
+    String getTokenHash() { return tokenHash; }
+    String getDeviceHint() { return deviceHint; }
+    String getIpAddress() { return ipAddress; }
+    OffsetDateTime getExpiresAt() { return expiresAt; }
+    boolean isRevoked() { return revoked; }
+    OffsetDateTime getRevokedAt() { return revokedAt; }
+    OffsetDateTime getCreatedAt() { return createdAt; }
+
+    void revoke(OffsetDateTime at) {
+        this.revoked = true;
+        this.revokedAt = at;
+    }
+
+    RefreshTokenRecord toDomain() {
+        return new RefreshTokenRecord(
+                id, userId, tokenHash, deviceHint, ipAddress,
+                expiresAt.toInstant(), createdAt.toInstant(),
+                revoked,
+                revokedAt == null ? null : revokedAt.toInstant());
     }
 }

@@ -2,6 +2,10 @@ package co.sena.iam.api.config;
 
 import co.sena.iam.application.port.in.AuthenticateUserUseCase;
 import co.sena.iam.application.port.in.GetCurrentUserUseCase;
+import co.sena.iam.application.port.in.ListUserSessionsUseCase;
+import co.sena.iam.application.port.in.LogoutUseCase;
+import co.sena.iam.application.port.in.RefreshAccessTokenUseCase;
+import co.sena.iam.application.port.in.RevokeUserSessionUseCase;
 import co.sena.iam.application.port.out.AccessTokenIssuer;
 import co.sena.iam.application.port.out.AccessTokenVerifier;
 import co.sena.iam.application.port.out.LoginAuditRepository;
@@ -12,14 +16,15 @@ import co.sena.iam.application.port.out.UserAccessRepository;
 import co.sena.iam.application.port.out.UserRepository;
 import co.sena.iam.application.usecase.AuthenticateUser;
 import co.sena.iam.application.usecase.GetCurrentUser;
+import co.sena.iam.application.usecase.ListUserSessions;
+import co.sena.iam.application.usecase.Logout;
+import co.sena.iam.application.usecase.RefreshAccessToken;
+import co.sena.iam.application.usecase.RevokeUserSession;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Wiring only. The use cases live in {@code iam-core} and know nothing about Spring, so the
- * deployable is where their ports get bound to the adapters.
- */
+/** Wiring only — use cases live in iam-core and know nothing about Spring. */
 @Configuration(proxyBeanMethods = false)
 class UseCaseConfiguration {
 
@@ -49,5 +54,31 @@ class UseCaseConfiguration {
             UserRepository users,
             UserAccessRepository userAccess) {
         return new GetCurrentUser(accessTokenVerifier, users, userAccess);
+    }
+
+    @Bean
+    RefreshAccessTokenUseCase refreshAccessTokenUseCase(
+            UserRepository users,
+            UserAccessRepository userAccess,
+            RefreshTokenRepository refreshTokens,
+            AccessTokenIssuer accessTokens,
+            RefreshTokenGenerator refreshTokenGenerator,
+            Clock clock) {
+        return new RefreshAccessToken(users, userAccess, refreshTokens, accessTokens, refreshTokenGenerator, clock);
+    }
+
+    @Bean
+    LogoutUseCase logoutUseCase(RefreshTokenRepository refreshTokens, Clock clock) {
+        return new Logout(refreshTokens, clock);
+    }
+
+    @Bean
+    ListUserSessionsUseCase listUserSessionsUseCase(RefreshTokenRepository refreshTokens) {
+        return new ListUserSessions(refreshTokens);
+    }
+
+    @Bean
+    RevokeUserSessionUseCase revokeUserSessionUseCase(RefreshTokenRepository refreshTokens, Clock clock) {
+        return new RevokeUserSession(refreshTokens, clock);
     }
 }

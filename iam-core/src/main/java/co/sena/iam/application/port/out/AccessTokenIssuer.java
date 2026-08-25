@@ -3,9 +3,10 @@ package co.sena.iam.application.port.out;
 import co.sena.iam.domain.model.User;
 import co.sena.iam.domain.model.UserAccess;
 import java.time.Instant;
+import java.util.UUID;
 
-/** Outbound port that mints the signed access token (JWT in the adapter). */
+/** Mint a signed access token. */
 public interface AccessTokenIssuer {
 
-    String issue(User user, UserAccess access, Instant issuedAt, Instant expiresAt);
+    String issue(User user, UserAccess access, UUID sessionId, Instant issuedAt, Instant expiresAt);
 }

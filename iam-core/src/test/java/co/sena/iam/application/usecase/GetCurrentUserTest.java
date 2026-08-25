@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import co.sena.iam.application.port.in.AuthenticatedIdentity;
 import co.sena.iam.application.port.out.AccessTokenVerifier;
 import co.sena.iam.domain.exception.UnauthenticatedException;
+import co.sena.iam.domain.model.TokenClaims;
 import co.sena.iam.domain.model.ActorType;
 import co.sena.iam.domain.model.LockoutState;
 import co.sena.iam.domain.model.RoleAssignment;
@@ -30,11 +31,13 @@ class GetCurrentUserTest {
             List.of(new RoleAssignment("COORDINATOR", null)),
             List.of("schedule.read"),
             List.of("scheduling"));
+    private static final UUID SESSION_ID = UUID.fromString("b0000000-0000-0000-0000-000000000001");
+
     private final AccessTokenVerifier validToken = token -> {
         if (!TOKEN.equals(token)) {
             throw new UnauthenticatedException("bad token");
         }
-        return USER_ID;
+        return new TokenClaims(USER_ID, SESSION_ID);
     };
 
     private GetCurrentUser getCurrentUser;

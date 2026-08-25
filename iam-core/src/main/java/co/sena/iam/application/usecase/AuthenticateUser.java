@@ -107,12 +107,12 @@ public final class AuthenticateUser implements AuthenticateUserUseCase {
         users.registerSuccessfulLogin(user.id(), now);
 
         UserAccess access = userAccess.findAccessFor(user.id());
-        Instant accessExpiresAt = now.plus(TokenPolicy.ACCESS_TOKEN_TTL);
-        String accessToken = accessTokens.issue(user, access, now, accessExpiresAt);
-
+        UUID sessionId = UUID.randomUUID();
         RefreshTokenSecret refresh = refreshTokenGenerator.generate();
-        refreshTokens.save(new RefreshTokenRecord(
-                UUID.randomUUID(),
+        Instant accessExpiresAt = now.plus(TokenPolicy.ACCESS_TOKEN_TTL);
+        String accessToken = accessTokens.issue(user, access, sessionId, now, accessExpiresAt);
+        refreshTokens.save(RefreshTokenRecord.newSession(
+                sessionId,
                 user.id(),
                 refresh.hash(),
                 command.deviceHint(),

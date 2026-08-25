@@ -29,6 +29,11 @@ class SecureRandomRefreshTokenGenerator implements RefreshTokenGenerator {
         return new RefreshTokenSecret(value, sha256Hex(value));
     }
 
+    @Override
+    public String hashOf(String value) {
+        return sha256Hex(value);
+    }
+
     static String sha256Hex(String value) {
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
