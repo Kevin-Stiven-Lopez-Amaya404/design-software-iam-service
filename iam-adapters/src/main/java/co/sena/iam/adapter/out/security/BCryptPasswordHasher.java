@@ -22,4 +22,9 @@ class BCryptPasswordHasher implements PasswordHasher {
             return false;
         }
     }
+
+    @Override
+    public String hash(String rawPassword) {
+        return encoder.encode(rawPassword);
+    }
 }

@@ -54,7 +54,7 @@ class RefreshAccessTokenTest {
                 clock);
 
         users.save(new User(USER_ID, "instructor@sena.edu.co", "hash", "Ana", "Ríos",
-                ActorType.INSTRUCTOR, null, true, LockoutState.clear()));
+                ActorType.INSTRUCTOR, null, true, LockoutState.clear(), false, null));
 
         refreshTokens.save(RefreshTokenRecord.newSession(
                 SESSION_ID, USER_ID, REFRESH_HASH, null, null,

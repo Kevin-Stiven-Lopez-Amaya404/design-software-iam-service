@@ -29,6 +29,18 @@ final class IamErrorCode {
     /** 404 — requested resource does not exist. */
     static final String NOT_FOUND = "NOT_FOUND";
 
+    /** 403 — user must change their temporary password before any token is issued. */
+    static final String PASSWORD_CHANGE_REQUIRED = "IAM_PASSWORD_CHANGE_REQUIRED";
+
+    /** 401 — temporary password has expired; the user must request a new reset. */
+    static final String TEMPORARY_PASSWORD_EXPIRED = "IAM_TEMPORARY_PASSWORD_EXPIRED";
+
+    /** 429 — too many password-reset requests for this email in the current window. */
+    static final String RATE_LIMIT_EXCEEDED = "IAM_RATE_LIMIT_EXCEEDED";
+
+    /** 400 — reset token absent, already used, or expired. */
+    static final String INVALID_RESET_TOKEN = "IAM_INVALID_RESET_TOKEN";
+
     private IamErrorCode() {
     }
 }

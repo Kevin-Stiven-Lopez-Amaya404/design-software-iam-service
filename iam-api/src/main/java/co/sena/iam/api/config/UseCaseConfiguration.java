@@ -1,6 +1,7 @@
 package co.sena.iam.api.config;
 
 import co.sena.iam.application.port.in.AuthenticateUserUseCase;
+import co.sena.iam.application.port.in.ConfirmPasswordResetUseCase;
 import co.sena.iam.application.port.in.GetCurrentUserUseCase;
 import co.sena.iam.application.port.in.ListModulesUseCase;
 import co.sena.iam.application.port.in.ListRoleFeaturesUseCase;
@@ -8,17 +9,21 @@ import co.sena.iam.application.port.in.ListRolesUseCase;
 import co.sena.iam.application.port.in.ListUserSessionsUseCase;
 import co.sena.iam.application.port.in.LogoutUseCase;
 import co.sena.iam.application.port.in.RefreshAccessTokenUseCase;
+import co.sena.iam.application.port.in.RequestPasswordResetUseCase;
 import co.sena.iam.application.port.in.RevokeUserSessionUseCase;
 import co.sena.iam.application.port.out.AccessTokenIssuer;
 import co.sena.iam.application.port.out.AccessTokenVerifier;
 import co.sena.iam.application.port.out.LoginAuditRepository;
 import co.sena.iam.application.port.out.PasswordHasher;
+import co.sena.iam.application.port.out.PasswordResetRepository;
+import co.sena.iam.application.port.out.RateLimiter;
 import co.sena.iam.application.port.out.RbacCatalogRepository;
 import co.sena.iam.application.port.out.RefreshTokenGenerator;
 import co.sena.iam.application.port.out.RefreshTokenRepository;
 import co.sena.iam.application.port.out.UserAccessRepository;
 import co.sena.iam.application.port.out.UserRepository;
 import co.sena.iam.application.usecase.AuthenticateUser;
+import co.sena.iam.application.usecase.ConfirmPasswordReset;
 import co.sena.iam.application.usecase.GetCurrentUser;
 import co.sena.iam.application.usecase.ListModules;
 import co.sena.iam.application.usecase.ListRoleFeatures;
@@ -26,6 +31,7 @@ import co.sena.iam.application.usecase.ListRoles;
 import co.sena.iam.application.usecase.ListUserSessions;
 import co.sena.iam.application.usecase.Logout;
 import co.sena.iam.application.usecase.RefreshAccessToken;
+import co.sena.iam.application.usecase.RequestPasswordReset;
 import co.sena.iam.application.usecase.RevokeUserSession;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
@@ -87,6 +93,27 @@ class UseCaseConfiguration {
     @Bean
     RevokeUserSessionUseCase revokeUserSessionUseCase(RefreshTokenRepository refreshTokens, Clock clock) {
         return new RevokeUserSession(refreshTokens, clock);
+    }
+
+    @Bean
+    RequestPasswordResetUseCase requestPasswordResetUseCase(
+            UserRepository users,
+            PasswordResetRepository resetRequests,
+            RefreshTokenGenerator tokenGenerator,
+            RateLimiter rateLimiter,
+            Clock clock) {
+        return new RequestPasswordReset(users, resetRequests, tokenGenerator, rateLimiter, clock);
+    }
+
+    @Bean
+    ConfirmPasswordResetUseCase confirmPasswordResetUseCase(
+            PasswordResetRepository resetRequests,
+            UserRepository users,
+            RefreshTokenRepository sessions,
+            PasswordHasher passwordHasher,
+            RefreshTokenGenerator tokenGenerator,
+            Clock clock) {
+        return new ConfirmPasswordReset(resetRequests, users, sessions, passwordHasher, tokenGenerator, clock);
     }
 
     @Bean

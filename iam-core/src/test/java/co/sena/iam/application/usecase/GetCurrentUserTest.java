@@ -50,7 +50,7 @@ class GetCurrentUserTest {
 
     private User user(boolean active) {
         return new User(USER_ID, "coord@sena.edu.co", "irrelevant", "Luz", "Peña",
-                ActorType.USER, null, active, LockoutState.clear());
+                ActorType.USER, null, active, LockoutState.clear(), false, null);
     }
 
     @Test

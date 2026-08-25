@@ -18,4 +18,7 @@ public interface RefreshTokenRepository {
     void revoke(UUID sessionId, Instant revokedAt);
 
     List<RefreshTokenRecord> findByUserId(UUID userId);
+
+    /** Revokes every active session belonging to {@code userId}. Used on password reset. */
+    void revokeAllByUserId(UUID userId, Instant revokedAt);
 }

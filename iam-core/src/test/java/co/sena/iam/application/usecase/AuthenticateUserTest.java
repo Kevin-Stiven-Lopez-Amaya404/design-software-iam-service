@@ -10,6 +10,8 @@ import co.sena.iam.application.port.in.LoginCommand;
 import co.sena.iam.application.port.out.RefreshTokenRepository;
 import co.sena.iam.domain.exception.AccountLockedException;
 import co.sena.iam.domain.exception.InvalidCredentialsException;
+import co.sena.iam.domain.exception.PasswordChangeRequiredException;
+import co.sena.iam.domain.exception.TemporaryPasswordExpiredException;
 import co.sena.iam.domain.model.ActorType;
 import co.sena.iam.domain.model.LockoutPolicy;
 import co.sena.iam.domain.model.LockoutState;
@@ -73,7 +75,13 @@ class AuthenticateUserTest {
 
     private User activeUser(LockoutState lockout) {
         return new User(USER_ID, EMAIL, TestDoubles.hashOf(PASSWORD), "Ana", "Ríos",
-                ActorType.INSTRUCTOR, null, true, lockout);
+                ActorType.INSTRUCTOR, null, true, lockout, false, null);
+    }
+
+    private User tempPasswordUser(boolean expired) {
+        Instant expires = expired ? NOW.minusSeconds(1) : NOW.plus(java.time.Duration.ofHours(48));
+        return new User(USER_ID, EMAIL, TestDoubles.hashOf(PASSWORD), "Ana", "Ríos",
+                ActorType.INSTRUCTOR, null, true, LockoutState.clear(), true, expires);
     }
 
     // ---------------------------------------------------------------- E1
@@ -169,7 +177,7 @@ class AuthenticateUserTest {
     @DisplayName("E2 a disabled account is refused like a wrong password, without counting it")
     void refusesDisabledAccount() {
         users.save(new User(USER_ID, EMAIL, TestDoubles.hashOf(PASSWORD), "Ana", "Ríos",
-                ActorType.INSTRUCTOR, null, false, LockoutState.clear()));
+                ActorType.INSTRUCTOR, null, false, LockoutState.clear(), false, null));
         AuthenticateUser useCase = newUseCase(TestDoubles.refuseToSave());
 
         assertThrows(InvalidCredentialsException.class,
@@ -234,5 +242,25 @@ class AuthenticateUserTest {
 
         assertEquals(ACCESS_TOKEN, result.accessToken());
         assertEquals(0, users.lockoutOf(USER_ID).failedAttempts());
+    }
+
+    // ---------------------------------------------------------------- HU-IAM-003 E1 / E2
+
+    @Test
+    @DisplayName("HU-IAM-003 E1 first login with a temporary (non-expired) password is refused with PasswordChangeRequiredException")
+    void firstLoginWithTempPasswordDemandsPwChange() {
+        users.save(tempPasswordUser(false));
+
+        assertThrows(PasswordChangeRequiredException.class,
+                () -> authenticateUser.authenticate(LoginCommand.of(EMAIL, PASSWORD)));
+    }
+
+    @Test
+    @DisplayName("HU-IAM-003 E2 first login with an expired temporary password is refused with TemporaryPasswordExpiredException")
+    void firstLoginWithExpiredTempPasswordIsRejected() {
+        users.save(tempPasswordUser(true));
+
+        assertThrows(TemporaryPasswordExpiredException.class,
+                () -> authenticateUser.authenticate(LoginCommand.of(EMAIL, PASSWORD)));
     }
 }

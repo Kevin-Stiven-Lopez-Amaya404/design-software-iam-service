@@ -10,4 +10,6 @@ interface SpringDataRefreshTokenRepository extends JpaRepository<RefreshTokenEnt
     Optional<RefreshTokenEntity> findByTokenHashAndRevokedFalse(String tokenHash);
 
     List<RefreshTokenEntity> findByUserId(UUID userId);
+
+    List<RefreshTokenEntity> findByUserIdAndRevokedFalse(UUID userId);
 }

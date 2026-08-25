@@ -3,15 +3,19 @@ package co.sena.iam.adapter.in.rest;
 import co.sena.iam.application.port.in.AuthenticateUserUseCase;
 import co.sena.iam.application.port.in.AuthenticatedIdentity;
 import co.sena.iam.application.port.in.AuthenticationResult;
+import co.sena.iam.application.port.in.ConfirmPasswordResetUseCase;
 import co.sena.iam.application.port.in.GetCurrentUserUseCase;
 import co.sena.iam.application.port.in.LoginCommand;
 import co.sena.iam.application.port.in.LogoutUseCase;
 import co.sena.iam.application.port.in.RefreshAccessTokenUseCase;
+import co.sena.iam.application.port.in.RequestPasswordResetUseCase;
 import co.sena.iam.application.port.out.AccessTokenVerifier;
 import co.sena.iam.contract.api.AuthApi;
 import co.sena.iam.contract.model.LoginRequest;
 import co.sena.iam.contract.model.MeResponse;
 import co.sena.iam.contract.model.MeResponseRolesInner;
+import co.sena.iam.contract.model.PasswordResetConfirm;
+import co.sena.iam.contract.model.PasswordResetRequest;
 import co.sena.iam.contract.model.RefreshRequest;
 import co.sena.iam.contract.model.TokenResponse;
 import co.sena.iam.contract.model.TokenResponseUser;
@@ -41,6 +45,8 @@ class AuthController implements AuthApi {
     private final GetCurrentUserUseCase getCurrentUser;
     private final RefreshAccessTokenUseCase refreshAccessToken;
     private final LogoutUseCase logout;
+    private final RequestPasswordResetUseCase requestPasswordReset;
+    private final ConfirmPasswordResetUseCase confirmPasswordReset;
     private final AccessTokenVerifier tokenVerifier;
     private final HttpServletRequest request;
 
@@ -49,12 +55,16 @@ class AuthController implements AuthApi {
             GetCurrentUserUseCase getCurrentUser,
             RefreshAccessTokenUseCase refreshAccessToken,
             LogoutUseCase logout,
+            RequestPasswordResetUseCase requestPasswordReset,
+            ConfirmPasswordResetUseCase confirmPasswordReset,
             AccessTokenVerifier tokenVerifier,
             HttpServletRequest request) {
         this.authenticateUser = authenticateUser;
         this.getCurrentUser = getCurrentUser;
         this.refreshAccessToken = refreshAccessToken;
         this.logout = logout;
+        this.requestPasswordReset = requestPasswordReset;
+        this.confirmPasswordReset = confirmPasswordReset;
         this.tokenVerifier = tokenVerifier;
         this.request = request;
     }
@@ -81,6 +91,18 @@ class AuthController implements AuthApi {
     public ResponseEntity<Void> logout() {
         TokenClaims claims = tokenVerifier.verify(BearerToken.from(request));
         this.logout.logout(claims.sessionId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> requestPasswordReset(PasswordResetRequest body) {
+        requestPasswordReset.request(body.getEmail(), clientIp());
+        return ResponseEntity.accepted().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> confirmPasswordReset(PasswordResetConfirm body) {
+        confirmPasswordReset.confirm(body.getToken(), body.getNewPassword());
         return ResponseEntity.noContent().build();
     }
 

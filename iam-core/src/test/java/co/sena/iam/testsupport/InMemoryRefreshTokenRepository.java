@@ -48,4 +48,12 @@ public final class InMemoryRefreshTokenRepository implements RefreshTokenReposit
     public List<RefreshTokenRecord> findByUserId(UUID userId) {
         return store.stream().filter(t -> t.userId().equals(userId)).toList();
     }
+
+    @Override
+    public void revokeAllByUserId(UUID userId, Instant revokedAt) {
+        store.replaceAll(t -> t.userId().equals(userId) && !t.isRevoked()
+                ? new RefreshTokenRecord(t.id(), t.userId(), t.tokenHash(), t.deviceHint(),
+                        t.ipAddress(), t.expiresAt(), t.createdAt(), true, revokedAt)
+                : t);
+    }
 }
