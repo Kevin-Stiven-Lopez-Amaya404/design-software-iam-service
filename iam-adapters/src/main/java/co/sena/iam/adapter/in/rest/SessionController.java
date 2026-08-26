@@ -2,7 +2,7 @@ package co.sena.iam.adapter.in.rest;
 
 import co.sena.iam.application.port.in.ListUserSessionsUseCase;
 import co.sena.iam.application.port.in.RevokeUserSessionUseCase;
-import co.sena.iam.contract.api.UsersApi;
+import co.sena.iam.contract.api.SessionsApi;
 import co.sena.iam.contract.model.Session;
 import co.sena.iam.domain.model.RefreshTokenRecord;
 import java.time.ZoneOffset;
@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1")
-class SessionController implements UsersApi {
+class SessionController implements SessionsApi {
 
     private final ListUserSessionsUseCase listSessions;
     private final RevokeUserSessionUseCase revokeSession;
