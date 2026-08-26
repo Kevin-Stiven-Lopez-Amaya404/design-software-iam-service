@@ -59,6 +59,13 @@ class JpaRefreshTokenRepository implements RefreshTokenRepository {
     }
 
     @Override
+    @Transactional
+    public void revokeAllActiveForUser(UUID userId, Instant revokedAt) {
+        OffsetDateTime at = OffsetDateTime.ofInstant(revokedAt, ZoneOffset.UTC);
+        jpaRepo.findByUserIdAndRevokedFalse(userId).forEach(entity -> entity.revoke(at));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<RefreshTokenRecord> findByUserId(UUID userId) {
         return jpaRepo.findByUserId(userId).stream()

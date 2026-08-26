@@ -21,4 +21,6 @@ public interface RefreshTokenRepository {
 
     /** Revokes every active session belonging to {@code userId}. Used on password reset. */
     void revokeAllByUserId(UUID userId, Instant revokedAt);
+
+    void revokeAllActiveForUser(UUID userId, Instant revokedAt);
 }

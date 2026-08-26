@@ -56,4 +56,16 @@ public final class InMemoryRefreshTokenRepository implements RefreshTokenReposit
                         t.ipAddress(), t.expiresAt(), t.createdAt(), true, revokedAt)
                 : t);
     }
+
+    @Override
+    public void revokeAllActiveForUser(UUID userId, Instant revokedAt) {
+        store.replaceAll(t -> t.userId().equals(userId) && !t.isRevoked()
+                ? new RefreshTokenRecord(t.id(), t.userId(), t.tokenHash(), t.deviceHint(),
+                        t.ipAddress(), t.expiresAt(), t.createdAt(), true, revokedAt)
+                : t);
+    }
+
+    public long activeCount(UUID userId) {
+        return store.stream().filter(t -> t.userId().equals(userId) && !t.isRevoked()).count();
+    }
 }
