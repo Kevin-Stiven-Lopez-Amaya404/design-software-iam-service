@@ -1,7 +1,9 @@
 package co.sena.iam.adapter.in.rest;
 
 import co.sena.iam.application.port.in.AssignRoleCommand;
+import co.sena.iam.application.port.in.AuthenticatedIdentity;
 import co.sena.iam.application.port.in.GetCurrentUserUseCase;
+import co.sena.iam.application.port.in.GrantScopeOverrideCommand;
 import co.sena.iam.application.port.in.ListModulesUseCase;
 import co.sena.iam.application.port.in.ListRoleFeaturesUseCase;
 import co.sena.iam.application.port.in.ListRolesUseCase;
@@ -13,10 +15,14 @@ import co.sena.iam.contract.model.Module;
 import co.sena.iam.contract.model.ModuleFeaturesInner;
 import co.sena.iam.contract.model.Role;
 import co.sena.iam.contract.model.RoleFeature;
+import co.sena.iam.contract.model.ScopeOverride;
+import co.sena.iam.contract.model.ScopeOverrideCreate;
 import co.sena.iam.contract.model.UserRole;
 import co.sena.iam.domain.model.RbacModule;
 import co.sena.iam.domain.model.RbacRole;
 import co.sena.iam.domain.model.RoleFeatureEntry;
+import co.sena.iam.domain.model.ScopeOverrideRecord;
+import co.sena.iam.domain.model.ScopeType;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -43,6 +49,7 @@ class RbacController implements ModulesApi, RolesApi {
     private final ListRolesUseCase listRoles;
     private final ListRoleFeaturesUseCase listRoleFeatures;
     private final UserApplicationService userService;
+    private final ScopeOverrideApplicationService scopeOverrideService;
     private final HttpServletRequest request;
 
     RbacController(
@@ -51,12 +58,14 @@ class RbacController implements ModulesApi, RolesApi {
             ListRolesUseCase listRoles,
             ListRoleFeaturesUseCase listRoleFeatures,
             UserApplicationService userService,
+            ScopeOverrideApplicationService scopeOverrideService,
             HttpServletRequest request) {
         this.getCurrentUser = getCurrentUser;
         this.listModules = listModules;
         this.listRoles = listRoles;
         this.listRoleFeatures = listRoleFeatures;
         this.userService = userService;
+        this.scopeOverrideService = scopeOverrideService;
         this.request = request;
     }
 
@@ -121,11 +130,48 @@ class RbacController implements ModulesApi, RolesApi {
         return ResponseEntity.noContent().build();
     }
 
+    // ---------------------------------------------------------------- HU-IAM-006 E3 — scope overrides
+
+    // GET /users/{id}/scope-overrides
+    @Override
+    public ResponseEntity<List<ScopeOverride>> listScopeOverrides(UUID id) {
+        requireAuthenticated();
+        List<ScopeOverride> body = scopeOverrideService.list(id).stream()
+                .map(RbacController::toScopeOverride)
+                .toList();
+        return ResponseEntity.ok(body);
+    }
+
+    // POST /users/{id}/scope-overrides
+    @Override
+    public ResponseEntity<ScopeOverride> createScopeOverride(UUID id, ScopeOverrideCreate body) {
+        AuthenticatedIdentity caller = requireAuthenticated();
+        var cmd = new GrantScopeOverrideCommand(
+                id,
+                body.getFeatureCode(),
+                ScopeType.fromCode(body.getScopeType().getValue()),
+                body.getIsAllowed(),
+                body.getReason(),
+                caller.user().id(),
+                body.getExpiresAt());
+        ScopeOverrideRecord created = scopeOverrideService.grant(cmd);
+        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
+                .body(toScopeOverride(created));
+    }
+
+    // DELETE /users/{id}/scope-overrides/{override_id}
+    @Override
+    public ResponseEntity<Void> revokeScopeOverride(UUID id, UUID overrideId) {
+        requireAuthenticated();
+        scopeOverrideService.revoke(id, overrideId);
+        return ResponseEntity.noContent().build();
+    }
+
     // ---------------------------------------------------------------- auth guard
 
-    /** Validates the Bearer token; throws UnauthenticatedException on any failure. */
-    private void requireAuthenticated() {
-        getCurrentUser.currentUser(BearerToken.from(request));
+    /** Validates the Bearer token and returns the caller; throws UnauthenticatedException on failure. */
+    private AuthenticatedIdentity requireAuthenticated() {
+        return getCurrentUser.currentUser(BearerToken.from(request));
     }
 
     // ---------------------------------------------------------------- mappers
@@ -163,6 +209,18 @@ class RbacController implements ModulesApi, RolesApi {
                 .featureName(e.featureName())
                 .actionLevel(RoleFeature.ActionLevelEnum.fromValue(e.actionLevel()))
                 .scopeType(RoleFeature.ScopeTypeEnum.fromValue(e.scopeType()));
+    }
+
+    private static ScopeOverride toScopeOverride(ScopeOverrideRecord r) {
+        return new ScopeOverride()
+                .id(r.id())
+                .featureCode(r.featureCode())
+                .scopeType(ScopeOverride.ScopeTypeEnum.fromValue(r.scopeType().name()))
+                .isAllowed(r.allowed())
+                .reason(r.reason())
+                .grantedBy(r.grantedBy())
+                .expiresAt(r.expiresAt())
+                .createdAt(r.createdAt());
     }
 
     private static UserRole toUserRole(UserRoleResult r) {
