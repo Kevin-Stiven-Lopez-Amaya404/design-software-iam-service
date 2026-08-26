@@ -32,6 +32,11 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-data-jpa</artifactId>
     </dependency>
+    <!-- HU-IAM-007: the outbox relay publishes staged events to the iam-events topic exchange -->
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-amqp</artifactId>
+    </dependency>
     <!-- BCrypt only; the full security starter is not needed for HU-IAM-001 -->
     <dependency>
       <groupId>org.springframework.security</groupId>

@@ -22,6 +22,17 @@ iam:
     private-key: ${IAM_JWT_PRIVATE_KEY}
     issuer: ${IAM_JWT_ISSUER}
     key-id: ${IAM_JWT_KEY_ID:iam-rsa-1}
+  # HU-IAM-007 outbox relay. The broker connection is configured through the standard Spring
+  # env vars (SPRING_RABBITMQ_HOST, SPRING_RABBITMQ_USERNAME, SPRING_RABBITMQ_PASSWORD, and
+  # optionally SPRING_RABBITMQ_PORT / SPRING_RABBITMQ_VIRTUAL_HOST). No secret defaults — when
+  # no host is set the relay stays off and events simply accumulate (staged) in identity.outbox.
+  events:
+    exchange: ${IAM_EVENTS_EXCHANGE:iam-events}
+  outbox:
+    relay:
+      poll-interval-ms: ${IAM_OUTBOX_RELAY_POLL_INTERVAL_MS:5000}
+      initial-delay-ms: ${IAM_OUTBOX_RELAY_INITIAL_DELAY_MS:5000}
+      batch-size: ${IAM_OUTBOX_RELAY_BATCH_SIZE:100}
 
 server:
   port: 8080

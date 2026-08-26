@@ -5,6 +5,7 @@ import co.sena.iam.application.port.in.AuthenticationResult;
 import co.sena.iam.application.port.in.LoginCommand;
 import co.sena.iam.application.port.out.AccessTokenIssuer;
 import co.sena.iam.application.port.out.LoginAuditRepository;
+import co.sena.iam.application.port.out.OutboxPort;
 import co.sena.iam.application.port.out.PasswordHasher;
 import co.sena.iam.application.port.out.RefreshTokenGenerator;
 import co.sena.iam.application.port.out.RefreshTokenRepository;
@@ -18,6 +19,7 @@ import co.sena.iam.domain.model.LockoutPolicy;
 import co.sena.iam.domain.model.LockoutState;
 import co.sena.iam.domain.model.LoginAttempt;
 import co.sena.iam.domain.model.LoginOutcome;
+import co.sena.iam.domain.model.OutboxEvent;
 import co.sena.iam.domain.model.RefreshTokenRecord;
 import co.sena.iam.domain.model.RefreshTokenSecret;
 import co.sena.iam.domain.model.TokenPolicy;
@@ -25,6 +27,8 @@ import co.sena.iam.domain.model.User;
 import co.sena.iam.domain.model.UserAccess;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -44,6 +48,7 @@ public final class AuthenticateUser implements AuthenticateUserUseCase {
     private final PasswordHasher passwordHasher;
     private final AccessTokenIssuer accessTokens;
     private final RefreshTokenGenerator refreshTokenGenerator;
+    private final OutboxPort outbox;
     private final Clock clock;
 
     public AuthenticateUser(
@@ -54,6 +59,7 @@ public final class AuthenticateUser implements AuthenticateUserUseCase {
             PasswordHasher passwordHasher,
             AccessTokenIssuer accessTokens,
             RefreshTokenGenerator refreshTokenGenerator,
+            OutboxPort outbox,
             Clock clock) {
         this.users = Objects.requireNonNull(users, "users");
         this.userAccess = Objects.requireNonNull(userAccess, "userAccess");
@@ -62,6 +68,7 @@ public final class AuthenticateUser implements AuthenticateUserUseCase {
         this.passwordHasher = Objects.requireNonNull(passwordHasher, "passwordHasher");
         this.accessTokens = Objects.requireNonNull(accessTokens, "accessTokens");
         this.refreshTokenGenerator = Objects.requireNonNull(refreshTokenGenerator, "refreshTokenGenerator");
+        this.outbox = Objects.requireNonNull(outbox, "outbox");
         this.clock = Objects.requireNonNull(clock, "clock");
     }
 
@@ -135,6 +142,13 @@ public final class AuthenticateUser implements AuthenticateUserUseCase {
                 now));
 
         audit(user.id(), user.email(), LoginOutcome.SUCCESS, command, now);
+
+        // HU-IAM-007 E4 — a fresh session is a domain event: stage iam.session.started so the
+        // outbox relay publishes it to iam-events (at-least-once, deduped by event_id).
+        Map<String, Object> sessionStarted = new HashMap<>();
+        sessionStarted.put("user_id", user.id().toString());
+        sessionStarted.put("session_id", sessionId.toString());
+        outbox.stage(OutboxEvent.of("iam.session.started", sessionStarted));
 
         return new AuthenticationResult(
                 accessToken,

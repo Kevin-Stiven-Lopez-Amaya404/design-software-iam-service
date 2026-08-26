@@ -29,6 +29,11 @@ procedimiento para actualizarlos. Nada generado se commitea.
 | `IAM_JWT_PRIVATE_KEY` | sí | Clave RSA privada PKCS#8 (PEM o base64) para firmar los access token RS256 |
 | `IAM_JWT_ISSUER` | sí | Claim `iss`, exigido también al verificar |
 | `IAM_JWT_KEY_ID` | no | `kid` del header (default `iam-rsa-1`), para rotación y JWKS |
+| `SPRING_RABBITMQ_HOST` | no | Broker RabbitMQ. **Si se define, se activa el relay de outbox** (HU-IAM-007) que publica en el exchange `iam-events`. Sin él, los eventos quedan solo *staged* en `identity.outbox`. |
+| `SPRING_RABBITMQ_USERNAME` / `SPRING_RABBITMQ_PASSWORD` | condicional | Credenciales del broker cuando el relay está activo (sin defaults de secreto). |
+| `SPRING_RABBITMQ_PORT` / `SPRING_RABBITMQ_VIRTUAL_HOST` | no | Puerto (`5672`) y vhost (`/`) del broker. |
+| `IAM_EVENTS_EXCHANGE` | no | Nombre del topic exchange (default `iam-events`). |
+| `IAM_OUTBOX_RELAY_POLL_INTERVAL_MS` / `IAM_OUTBOX_RELAY_BATCH_SIZE` | no | Cadencia (default `5000`) y tamaño de lote (default `100`) del poller. |
 
 Si falta la clave o el issuer el servicio **no arranca**: es deliberado, no hay valor por defecto.
 
@@ -53,6 +58,26 @@ IAM_DB_DSN=jdbc:postgresql://localhost:15432/design-software-develop \
 IAM_DB_USERNAME=design_software_app IAM_DB_PASSWORD=... \
 ./mvnw verify
 ```
+
+`OutboxRelayPostgresIT` (HU-IAM-007) necesita además un broker RabbitMQ real; se salta solo si
+falta `IAM_BROKER_HOST`:
+
+```bash
+IAM_DB_DSN=... IAM_DB_USERNAME=... IAM_DB_PASSWORD=... \
+IAM_BROKER_HOST=localhost IAM_BROKER_USERNAME=app IAM_BROKER_PASSWORD=app \
+./mvnw verify
+```
+
+## Eventos de dominio (outbox → `iam-events`)
+
+Los casos de uso **stagean** eventos en `identity.outbox` dentro de la misma transacción que el
+cambio de estado (`iam.user.created`, `iam.user.deactivated`, `iam.role.assigned` de HU-IAM-005;
+`iam.session.started` en el login, HU-IAM-007). Un **relay** (`OutboxRelay`, poller `@Scheduled`
+sobre `iam-api`) lee las filas no publicadas con `FOR UPDATE SKIP LOCKED`, las publica en el topic
+exchange `iam-events` (routing key = `event_type`, message-id = `event_id`) como *envelope* de
+`design-software-shared-contracts`, y marca `published_at`. Entrega **at-least-once**; los
+consumidores deduplican por `event_id`. El relay solo se activa si hay broker configurado
+(`SPRING_RABBITMQ_HOST`).
 
 ## Endpoints implementados
 

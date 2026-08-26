@@ -74,10 +74,11 @@ class UseCaseConfiguration {
             PasswordHasher passwordHasher,
             AccessTokenIssuer accessTokens,
             RefreshTokenGenerator refreshTokenGenerator,
+            OutboxPort outbox,
             Clock clock) {
         return new AuthenticateUser(
                 users, userAccess, auditLog, refreshTokens,
-                passwordHasher, accessTokens, refreshTokenGenerator, clock);
+                passwordHasher, accessTokens, refreshTokenGenerator, outbox, clock);
     }
 
     @Bean
