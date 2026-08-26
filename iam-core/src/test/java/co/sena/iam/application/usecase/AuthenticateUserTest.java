@@ -16,6 +16,7 @@ import co.sena.iam.domain.model.ActorType;
 import co.sena.iam.domain.model.LockoutPolicy;
 import co.sena.iam.domain.model.LockoutState;
 import co.sena.iam.domain.model.LoginOutcome;
+import co.sena.iam.domain.model.OutboxEvent;
 import co.sena.iam.domain.model.RefreshTokenRecord;
 import co.sena.iam.domain.model.RoleAssignment;
 import co.sena.iam.domain.model.TokenPolicy;
@@ -23,6 +24,7 @@ import co.sena.iam.domain.model.User;
 import co.sena.iam.domain.model.UserAccess;
 import co.sena.iam.testsupport.InMemoryUserRepository;
 import co.sena.iam.testsupport.RecordingLoginAuditRepository;
+import co.sena.iam.testsupport.RecordingOutboxPort;
 import co.sena.iam.testsupport.TestDoubles;
 import java.time.Clock;
 import java.time.Instant;
@@ -48,6 +50,7 @@ class AuthenticateUserTest {
     private final RecordingLoginAuditRepository auditLog = new RecordingLoginAuditRepository();
     private final TestDoubles.RecordingRefreshTokenRepository refreshTokens =
             new TestDoubles.RecordingRefreshTokenRepository();
+    private final RecordingOutboxPort outbox = new RecordingOutboxPort();
     private final UserAccess access = new UserAccess(
             List.of(new RoleAssignment("INSTRUCTOR", UUID.fromString("11111111-1111-1111-1111-111111111111"))),
             List.of("schedule.read", "schedule.write"),
@@ -70,6 +73,7 @@ class AuthenticateUserTest {
                 TestDoubles.passwordHasher(),
                 TestDoubles.accessTokenIssuer(ACCESS_TOKEN),
                 TestDoubles.refreshTokenGenerator(REFRESH_TOKEN),
+                outbox,
                 clock);
     }
 
@@ -145,6 +149,32 @@ class AuthenticateUserTest {
                 authenticateUser.authenticate(LoginCommand.of("Instructor@SENA.edu.co", PASSWORD));
 
         assertEquals(ACCESS_TOKEN, result.accessToken());
+    }
+
+    // ---------------------------------------------------------------- E4 (HU-IAM-007)
+
+    @Test
+    @DisplayName("E4 a successful login stages iam.session.started in the outbox")
+    void stagesSessionStartedOnSuccess() {
+        authenticateUser.authenticate(LoginCommand.of(EMAIL, PASSWORD));
+
+        OutboxEvent event = outbox.singleEvent();
+        assertEquals("iam.session.started", event.eventType());
+        assertEquals("iam", event.sourceService());
+        assertEquals("1", event.version());
+        assertEquals(USER_ID.toString(), event.payload().get("user_id"));
+        assertTrue(event.payload().containsKey("session_id"), "the session id is carried in the payload");
+    }
+
+    @Test
+    @DisplayName("E4 a refused login stages no session event")
+    void stagesNothingWhenLoginIsRefused() {
+        AuthenticateUser useCase = newUseCase(TestDoubles.refuseToSave());
+
+        assertThrows(InvalidCredentialsException.class,
+                () -> useCase.authenticate(LoginCommand.of(EMAIL, "wrong-password")));
+
+        assertTrue(outbox.isEmpty(), "no session.started for a login that never issued a session");
     }
 
     // ---------------------------------------------------------------- E2
