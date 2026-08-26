@@ -53,6 +53,12 @@ final class IamErrorCode {
     /** 409 — role is already assigned to the user (same role + training_center). */
     static final String ROLE_ALREADY_ASSIGNED = "IAM_ROLE_ALREADY_ASSIGNED";
 
+    /** 422 — a scope override referenced a feature code that is not in the catalog. */
+    static final String FEATURE_NOT_FOUND = "IAM_FEATURE_NOT_FOUND";
+
+    /** 404 — no scope override with the given id exists for the target user. */
+    static final String SCOPE_OVERRIDE_NOT_FOUND = "IAM_SCOPE_OVERRIDE_NOT_FOUND";
+
     private IamErrorCode() {
     }
 }
