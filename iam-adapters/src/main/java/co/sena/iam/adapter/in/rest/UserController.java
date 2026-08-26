@@ -1,32 +1,22 @@
 package co.sena.iam.adapter.in.rest;
 
-import co.sena.iam.application.port.in.AssignRoleCommand;
 import co.sena.iam.application.port.in.CreateUserCommand;
+import co.sena.iam.application.port.in.GetCurrentUserUseCase;
 import co.sena.iam.application.port.in.GetUserUseCase;
 import co.sena.iam.application.port.in.ListUsersQuery;
 import co.sena.iam.application.port.in.ListUsersUseCase;
-import co.sena.iam.application.port.in.ListUserSessionsUseCase;
-import co.sena.iam.application.port.in.RevokeUserSessionUseCase;
 import co.sena.iam.application.port.in.UpdateUserCommand;
 import co.sena.iam.application.port.in.UserCreateResult;
-import co.sena.iam.application.port.in.UserRoleResult;
-import co.sena.iam.application.port.in.GetCurrentUserUseCase;
 import co.sena.iam.contract.api.UsersApi;
-import co.sena.iam.contract.model.AssignRoleRequest;
 import co.sena.iam.contract.model.ListUsers200Response;
 import co.sena.iam.contract.model.ListUsers200ResponsePagination;
-import co.sena.iam.contract.model.Session;
 import co.sena.iam.contract.model.User;
 import co.sena.iam.contract.model.UserCreate;
 import co.sena.iam.contract.model.UserCreateResponse;
 import co.sena.iam.contract.model.UserUpdate;
 import co.sena.iam.domain.model.ActorType;
-import co.sena.iam.domain.model.RefreshTokenRecord;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -42,8 +32,6 @@ class UserController implements UsersApi {
     private final UserApplicationService userService;
     private final GetUserUseCase getUser;
     private final ListUsersUseCase listUsers;
-    private final ListUserSessionsUseCase listUserSessions;
-    private final RevokeUserSessionUseCase revokeUserSession;
     private final GetCurrentUserUseCase getCurrentUser;
     private final HttpServletRequest request;
 
@@ -51,15 +39,11 @@ class UserController implements UsersApi {
             UserApplicationService userService,
             GetUserUseCase getUser,
             ListUsersUseCase listUsers,
-            ListUserSessionsUseCase listUserSessions,
-            RevokeUserSessionUseCase revokeUserSession,
             GetCurrentUserUseCase getCurrentUser,
             HttpServletRequest request) {
         this.userService = userService;
         this.getUser = getUser;
         this.listUsers = listUsers;
-        this.listUserSessions = listUserSessions;
-        this.revokeUserSession = revokeUserSession;
         this.getCurrentUser = getCurrentUser;
         this.request = request;
     }
@@ -145,25 +129,6 @@ class UserController implements UsersApi {
         return ResponseEntity.noContent().build();
     }
 
-    // ---------------------------------------------------------------- GET /users/{id}/sessions
-
-    @Override
-    public ResponseEntity<List<Session>> listUserSessions(UUID id) {
-        requireAuthenticated();
-        List<Session> sessions = listUserSessions.listSessions(id).stream()
-                .map(UserController::toSession).toList();
-        return ResponseEntity.ok(sessions);
-    }
-
-    // ---------------------------------------------------------------- DELETE /users/{id}/sessions/{session_id}
-
-    @Override
-    public ResponseEntity<Void> revokeUserSession(UUID id, UUID sessionId) {
-        requireAuthenticated();
-        revokeUserSession.revokeSession(id, sessionId);
-        return ResponseEntity.noContent().build();
-    }
-
     // ---------------------------------------------------------------- auth guard
 
     private void requireAuthenticated() {
@@ -184,15 +149,4 @@ class UserController implements UsersApi {
                 .isActive(u.active());
     }
 
-    private static Session toSession(RefreshTokenRecord r) {
-        return new Session()
-                .id(r.id())
-                .deviceHint(r.deviceHint())
-                .ipAddress(r.ipAddress())
-                .createdAt(OffsetDateTime.ofInstant(r.createdAt(), ZoneOffset.UTC))
-                .expiresAt(OffsetDateTime.ofInstant(r.expiresAt(), ZoneOffset.UTC))
-                .isRevoked(r.isRevoked())
-                .revokedAt(r.revokedAt() != null
-                        ? OffsetDateTime.ofInstant(r.revokedAt(), ZoneOffset.UTC) : null);
-    }
 }

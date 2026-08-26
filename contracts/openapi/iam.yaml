@@ -17,6 +17,8 @@ tags:
     description: Autenticación y sesión.
   - name: users
     description: Gestión de cuentas de usuario.
+  - name: sessions
+    description: Sesiones activas de usuario (tokens de refresco vigentes).
   - name: roles
     description: Roles, features y asignaciones.
   - name: modules
@@ -245,7 +247,7 @@ paths:
       - $ref: '#/components/parameters/UserId'
     get:
       operationId: listUserSessions
-      tags: [users]
+      tags: [sessions]
       summary: Sesiones activas (refresh tokens vigentes) del usuario.
       x-required-feature: IDENTITY_USER_VIEW
       responses:
@@ -269,7 +271,7 @@ paths:
         schema: { type: string, format: uuid }
     delete:
       operationId: revokeUserSession
-      tags: [users]
+      tags: [sessions]
       summary: Revoca una sesión específica del usuario.
       x-required-feature: IDENTITY_USER_VIEW
       responses:
