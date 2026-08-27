@@ -96,7 +96,7 @@ class PasswordResetPostgresIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginBody(TEST_EMAIL, TEMP_PASSWORD)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error_code").value("IAM_PASSWORD_CHANGE_REQUIRED"));
+                .andExpect(jsonPath("$.error.code").value("IAM_PASSWORD_CHANGE_REQUIRED"));
     }
 
     // ---------------------------------------------------------------- E2
@@ -115,7 +115,7 @@ class PasswordResetPostgresIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(loginBody(TEST_EMAIL, TEMP_PASSWORD)))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.error_code").value("IAM_TEMPORARY_PASSWORD_EXPIRED"));
+                .andExpect(jsonPath("$.error.code").value("IAM_TEMPORARY_PASSWORD_EXPIRED"));
     }
 
     // ---------------------------------------------------------------- E3
@@ -141,7 +141,7 @@ class PasswordResetPostgresIT {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"token\":\"wrong-token\",\"new_password\":\"" + NEW_PASSWORD + "\"}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error_code").value("IAM_INVALID_RESET_TOKEN"));
+                .andExpect(jsonPath("$.error.code").value("IAM_INVALID_RESET_TOKEN"));
 
         // 4. Unknown email request: still returns 202 (no info leak)
         mvc.perform(post("/api/v1/auth/password-reset/request")
