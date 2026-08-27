@@ -86,9 +86,31 @@ consumidores deduplican por `event_id`. El relay solo se activa si hay broker co
 | `POST` | `/api/v1/auth/login` | HU-IAM-001 | 200 tokens · 401 `IAM_INVALID_CREDENTIALS` · 423 `IAM_ACCOUNT_LOCKED` |
 | `GET` | `/api/v1/auth/me` | HU-IAM-001 | Identidad + roles/features/módulos del portador |
 | `GET` | `/health`, `/ready` | template | Sondas del contenedor, fuera de `/api/v1` |
+| `GET` | `/api/v1/reports/login-audit` | HU-IAM-009 | Solo lectura · paginación por cursor · requiere feature `AUDIT_LOG_VIEW` · 403 `FORBIDDEN` sin el feature |
 
 El resto de operaciones del contrato existe en la interfaz generada y responde `501` hasta que
 su HU las implemente.
+
+## Reporte de auditoría de login (HU-IAM-009)
+
+`GET /api/v1/reports/login-audit` — reporte propio del dominio IAM sobre
+`identity_audit.audit_login`, solo lectura (sin escritura desde este endpoint; el único
+escritor sigue siendo `AuthenticateUser`, HU-IAM-001).
+
+- **Paginación por cursor** (guidelines §6, colección grande/continua): orden
+  `attempted_at DESC, id DESC` (más reciente primero, `id` como desempate estable). El cursor
+  es opaco al cliente: base64 de un JSON `{"attempted_at","id"}` con la última fila de la
+  página anterior. `limit` por defecto 50, máx 100 (`_shared.yaml#/components/parameters/limit`).
+- **Filtros**: `user_id`, `email` (email intentado), `outcome`, `from`/`to` (rango inclusive/
+  exclusive sobre `attempted_at`). Todos opcionales y combinables.
+- **Autorización (E2, motor de HU-IAM-006)** — el feature requerido es `AUDIT_LOG_VIEW`
+  (`x-required-feature` en el contrato). El controlador resuelve al solicitante con
+  `GetCurrentUserUseCase` y evalúa `EvaluateAuthorizationUseCase` contra su centro de formación
+  primario (`UserAccess.primaryTrainingCenterId()`): `SYSTEM_ADMIN` tiene el feature en scope
+  `GLOBAL` (siempre pasa); `CENTER_DIRECTOR` lo tiene en scope `TRAINING_CENTER` (pasa si su rol
+  cubre ese centro). Sin un grant que cubra el centro, `403 FORBIDDEN`. `audit_login` no tiene
+  columna de centro de formación, así que el control es de acceso al endpoint completo, no un
+  filtro fila a fila por centro.
 
 ## Reglas de negocio vivas
 
