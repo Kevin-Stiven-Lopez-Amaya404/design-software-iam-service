@@ -8,8 +8,12 @@ import co.sena.iam.domain.model.ScopeOverrideRecord;
 import co.sena.iam.domain.model.ScopeType;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * HU-IAM-006 — decides whether a user may exercise a feature against an optional target
@@ -91,4 +95,37 @@ public final class AuthorizationPolicy {
         };
     }
 
+    /**
+     * HU-IAM-010 E1 — materializes the user's effective grants as {@code CODE:SCOPE_TYPE}
+     * pairs, for stamping into the access token so downstream services authorize locally
+     * (see {@code authentication.md}). Same precedence as {@link #decide}: an active block
+     * override removes a feature outright; otherwise the broadest role-derived scope wins
+     * (mirrors the catalog's own notion of "broadest scope", {@link ScopeType#ordinal()});
+     * an active allow override still adds a feature no role grants.
+     */
+    public List<String> effectiveFeatureScopes(AuthorizationProfile profile, Instant now) {
+        Objects.requireNonNull(profile, "profile");
+        Objects.requireNonNull(now, "now");
+
+        Set<String> denied = profile.overrides().stream()
+                .filter(o -> o.isActiveAt(now) && !o.allowed())
+                .map(ScopeOverrideRecord::featureCode)
+                .collect(Collectors.toSet());
+
+        Map<String, ScopeType> broadestScopeByFeature = new TreeMap<>();
+        profile.grants().stream()
+                .filter(g -> !denied.contains(g.featureCode()))
+                .forEach(g -> broadestScopeByFeature.merge(g.featureCode(), g.scopeType(), AuthorizationPolicy::broader));
+        profile.overrides().stream()
+                .filter(o -> o.isActiveAt(now) && o.allowed() && !denied.contains(o.featureCode()))
+                .forEach(o -> broadestScopeByFeature.merge(o.featureCode(), o.scopeType(), AuthorizationPolicy::broader));
+
+        return broadestScopeByFeature.entrySet().stream()
+                .map(e -> e.getKey() + ":" + e.getValue().name())
+                .toList();
+    }
+
+    private static ScopeType broader(ScopeType a, ScopeType b) {
+        return a.ordinal() <= b.ordinal() ? a : b;
+    }
 }

@@ -82,6 +82,7 @@ class UseCaseConfiguration {
     AuthenticateUserUseCase authenticateUserUseCase(
             UserRepository users,
             UserAccessRepository userAccess,
+            AuthorizationProfilePort authorizationProfiles,
             LoginAuditRepository auditLog,
             RefreshTokenRepository refreshTokens,
             PasswordHasher passwordHasher,
@@ -90,7 +91,7 @@ class UseCaseConfiguration {
             OutboxPort outbox,
             Clock clock) {
         return new AuthenticateUser(
-                users, userAccess, auditLog, refreshTokens,
+                users, userAccess, authorizationProfiles, auditLog, refreshTokens,
                 passwordHasher, accessTokens, refreshTokenGenerator, outbox, clock);
     }
 
@@ -106,11 +107,14 @@ class UseCaseConfiguration {
     RefreshAccessTokenUseCase refreshAccessTokenUseCase(
             UserRepository users,
             UserAccessRepository userAccess,
+            AuthorizationProfilePort authorizationProfiles,
             RefreshTokenRepository refreshTokens,
             AccessTokenIssuer accessTokens,
             RefreshTokenGenerator refreshTokenGenerator,
             Clock clock) {
-        return new RefreshAccessToken(users, userAccess, refreshTokens, accessTokens, refreshTokenGenerator, clock);
+        return new RefreshAccessToken(
+                users, userAccess, authorizationProfiles, refreshTokens,
+                accessTokens, refreshTokenGenerator, clock);
     }
 
     @Bean

@@ -164,4 +164,79 @@ class AuthorizationPolicyTest {
                 UUID.randomUUID(), feature, scope, false, "explicit block",
                 UUID.randomUUID(), null, OffsetDateTime.ofInstant(NOW, ZoneOffset.UTC));
     }
+
+    // ------------------------------------------------------------------ HU-IAM-010 E1: effectiveFeatureScopes
+
+    @Test
+    @DisplayName("a role grant materializes as a CODE:SCOPE_TYPE pair")
+    void roleGrantMaterializesAsCodeScopePair() {
+        var profile = new AuthorizationProfile(
+                List.of(new FeatureGrant(FEATURE, ScopeType.TRAINING_CENTER, CENTER_A)),
+                List.of());
+
+        assertThat(policy.effectiveFeatureScopes(profile, NOW))
+                .containsExactly(FEATURE + ":TRAINING_CENTER");
+    }
+
+    @Test
+    @DisplayName("the same feature granted at two scopes by different roles keeps only the broadest")
+    void sameFeatureAtTwoScopesKeepsTheBroadest() {
+        var profile = new AuthorizationProfile(
+                List.of(
+                        new FeatureGrant(FEATURE, ScopeType.TRAINING_CENTER, CENTER_A),
+                        new FeatureGrant(FEATURE, ScopeType.GLOBAL, null)),
+                List.of());
+
+        assertThat(policy.effectiveFeatureScopes(profile, NOW))
+                .containsExactly(FEATURE + ":GLOBAL");
+    }
+
+    @Test
+    @DisplayName("an active block override removes the feature entirely, even though a role grants it")
+    void blockOverrideRemovesTheFeature() {
+        var profile = new AuthorizationProfile(
+                List.of(new FeatureGrant(FEATURE, ScopeType.GLOBAL, null)),
+                List.of(blockOverride(FEATURE, ScopeType.GLOBAL)));
+
+        assertThat(policy.effectiveFeatureScopes(profile, NOW)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("an active allow override adds a feature no role grants")
+    void allowOverrideAddsAMissingFeature() {
+        var profile = new AuthorizationProfile(
+                List.of(),
+                List.of(allowOverride(FEATURE, ScopeType.GLOBAL, null)));
+
+        assertThat(policy.effectiveFeatureScopes(profile, NOW))
+                .containsExactly(FEATURE + ":GLOBAL");
+    }
+
+    @Test
+    @DisplayName("an expired override is ignored: an expired block does not hide the role grant")
+    void expiredBlockOverrideIsIgnored() {
+        var expiredBlock = new ScopeOverrideRecord(
+                UUID.randomUUID(), FEATURE, ScopeType.GLOBAL, false, "temporary block",
+                UUID.randomUUID(), OffsetDateTime.ofInstant(NOW.minusSeconds(60), ZoneOffset.UTC),
+                OffsetDateTime.ofInstant(NOW.minusSeconds(3600), ZoneOffset.UTC));
+        var profile = new AuthorizationProfile(
+                List.of(new FeatureGrant(FEATURE, ScopeType.GLOBAL, null)),
+                List.of(expiredBlock));
+
+        assertThat(policy.effectiveFeatureScopes(profile, NOW))
+                .containsExactly(FEATURE + ":GLOBAL");
+    }
+
+    @Test
+    @DisplayName("the result is sorted by feature code, for a deterministic token payload")
+    void resultIsSortedByFeatureCode() {
+        var profile = new AuthorizationProfile(
+                List.of(
+                        new FeatureGrant("ZZZ_LAST", ScopeType.GLOBAL, null),
+                        new FeatureGrant("AAA_FIRST", ScopeType.GLOBAL, null)),
+                List.of());
+
+        assertThat(policy.effectiveFeatureScopes(profile, NOW))
+                .containsExactly("AAA_FIRST:GLOBAL", "ZZZ_LAST:GLOBAL");
+    }
 }

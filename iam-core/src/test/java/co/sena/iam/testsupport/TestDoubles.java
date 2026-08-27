@@ -1,10 +1,12 @@
 package co.sena.iam.testsupport;
 
 import co.sena.iam.application.port.out.AccessTokenIssuer;
+import co.sena.iam.application.port.out.AuthorizationProfilePort;
 import co.sena.iam.application.port.out.PasswordHasher;
 import co.sena.iam.application.port.out.RefreshTokenGenerator;
 import co.sena.iam.application.port.out.RefreshTokenRepository;
 import co.sena.iam.application.port.out.UserAccessRepository;
+import co.sena.iam.domain.model.AuthorizationProfile;
 import co.sena.iam.domain.model.RefreshTokenRecord;
 import co.sena.iam.domain.model.RefreshTokenSecret;
 import co.sena.iam.domain.model.UserAccess;
@@ -42,7 +44,30 @@ public final class TestDoubles {
     }
 
     public static AccessTokenIssuer accessTokenIssuer(String token) {
-        return (user, access, sessionId, issuedAt, expiresAt) -> token;
+        return (user, access, featureScopes, sessionId, issuedAt, expiresAt) -> token;
+    }
+
+    /** Captures the {@code featureScopes} it was last called with, so tests can assert on them. */
+    public static final class RecordingAccessTokenIssuer implements AccessTokenIssuer {
+
+        private final String token;
+        private List<String> lastFeatureScopes;
+
+        public RecordingAccessTokenIssuer(String token) {
+            this.token = token;
+        }
+
+        @Override
+        public String issue(
+                co.sena.iam.domain.model.User user, UserAccess access, List<String> featureScopes,
+                UUID sessionId, Instant issuedAt, Instant expiresAt) {
+            this.lastFeatureScopes = featureScopes;
+            return token;
+        }
+
+        public List<String> lastFeatureScopes() {
+            return lastFeatureScopes;
+        }
     }
 
     public static RefreshTokenGenerator refreshTokenGenerator(String value) {
@@ -61,6 +86,14 @@ public final class TestDoubles {
 
     public static UserAccessRepository userAccess(UserAccess access) {
         return userId -> access;
+    }
+
+    public static AuthorizationProfilePort authorizationProfile(AuthorizationProfile profile) {
+        return userId -> profile;
+    }
+
+    public static AuthorizationProfilePort emptyAuthorizationProfile() {
+        return userId -> AuthorizationProfile.empty();
     }
 
     /** Collects saved refresh tokens. */

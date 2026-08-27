@@ -4,6 +4,7 @@ import co.sena.iam.application.port.in.AuthenticateUserUseCase;
 import co.sena.iam.application.port.in.AuthenticationResult;
 import co.sena.iam.application.port.in.LoginCommand;
 import co.sena.iam.application.port.out.AccessTokenIssuer;
+import co.sena.iam.application.port.out.AuthorizationProfilePort;
 import co.sena.iam.application.port.out.LoginAuditRepository;
 import co.sena.iam.application.port.out.OutboxPort;
 import co.sena.iam.application.port.out.PasswordHasher;
@@ -25,9 +26,11 @@ import co.sena.iam.domain.model.RefreshTokenSecret;
 import co.sena.iam.domain.model.TokenPolicy;
 import co.sena.iam.domain.model.User;
 import co.sena.iam.domain.model.UserAccess;
+import co.sena.iam.domain.service.AuthorizationPolicy;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -43,6 +46,7 @@ public final class AuthenticateUser implements AuthenticateUserUseCase {
 
     private final UserRepository users;
     private final UserAccessRepository userAccess;
+    private final AuthorizationProfilePort authorizationProfiles;
     private final LoginAuditRepository auditLog;
     private final RefreshTokenRepository refreshTokens;
     private final PasswordHasher passwordHasher;
@@ -50,10 +54,12 @@ public final class AuthenticateUser implements AuthenticateUserUseCase {
     private final RefreshTokenGenerator refreshTokenGenerator;
     private final OutboxPort outbox;
     private final Clock clock;
+    private final AuthorizationPolicy authorizationPolicy = new AuthorizationPolicy();
 
     public AuthenticateUser(
             UserRepository users,
             UserAccessRepository userAccess,
+            AuthorizationProfilePort authorizationProfiles,
             LoginAuditRepository auditLog,
             RefreshTokenRepository refreshTokens,
             PasswordHasher passwordHasher,
@@ -63,6 +69,7 @@ public final class AuthenticateUser implements AuthenticateUserUseCase {
             Clock clock) {
         this.users = Objects.requireNonNull(users, "users");
         this.userAccess = Objects.requireNonNull(userAccess, "userAccess");
+        this.authorizationProfiles = Objects.requireNonNull(authorizationProfiles, "authorizationProfiles");
         this.auditLog = Objects.requireNonNull(auditLog, "auditLog");
         this.refreshTokens = Objects.requireNonNull(refreshTokens, "refreshTokens");
         this.passwordHasher = Objects.requireNonNull(passwordHasher, "passwordHasher");
@@ -128,10 +135,14 @@ public final class AuthenticateUser implements AuthenticateUserUseCase {
         users.registerSuccessfulLogin(user.id(), now);
 
         UserAccess access = userAccess.findAccessFor(user.id());
+        // HU-IAM-010 E1 — feature:scope pairs stamped from the HU-006 evaluation, not the
+        // bare feature codes, so downstream services can authorize locally (authentication.md).
+        List<String> featureScopes = authorizationPolicy.effectiveFeatureScopes(
+                authorizationProfiles.loadProfile(user.id()), now);
         UUID sessionId = UUID.randomUUID();
         RefreshTokenSecret refresh = refreshTokenGenerator.generate();
         Instant accessExpiresAt = now.plus(TokenPolicy.ACCESS_TOKEN_TTL);
-        String accessToken = accessTokens.issue(user, access, sessionId, now, accessExpiresAt);
+        String accessToken = accessTokens.issue(user, access, featureScopes, sessionId, now, accessExpiresAt);
         refreshTokens.save(RefreshTokenRecord.newSession(
                 sessionId,
                 user.id(),

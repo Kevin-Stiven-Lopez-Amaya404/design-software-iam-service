@@ -7,18 +7,22 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import co.sena.iam.application.port.in.AuthenticationResult;
 import co.sena.iam.application.port.in.LoginCommand;
+import co.sena.iam.application.port.out.AuthorizationProfilePort;
 import co.sena.iam.application.port.out.RefreshTokenRepository;
 import co.sena.iam.domain.exception.AccountLockedException;
 import co.sena.iam.domain.exception.InvalidCredentialsException;
 import co.sena.iam.domain.exception.PasswordChangeRequiredException;
 import co.sena.iam.domain.exception.TemporaryPasswordExpiredException;
 import co.sena.iam.domain.model.ActorType;
+import co.sena.iam.domain.model.AuthorizationProfile;
+import co.sena.iam.domain.model.FeatureGrant;
 import co.sena.iam.domain.model.LockoutPolicy;
 import co.sena.iam.domain.model.LockoutState;
 import co.sena.iam.domain.model.LoginOutcome;
 import co.sena.iam.domain.model.OutboxEvent;
 import co.sena.iam.domain.model.RefreshTokenRecord;
 import co.sena.iam.domain.model.RoleAssignment;
+import co.sena.iam.domain.model.ScopeType;
 import co.sena.iam.domain.model.TokenPolicy;
 import co.sena.iam.domain.model.User;
 import co.sena.iam.domain.model.UserAccess;
@@ -55,6 +59,9 @@ class AuthenticateUserTest {
             List.of(new RoleAssignment("INSTRUCTOR", UUID.fromString("11111111-1111-1111-1111-111111111111"))),
             List.of("schedule.read", "schedule.write"),
             List.of("scheduling"));
+    private final AuthorizationProfile authorizationProfile = new AuthorizationProfile(
+            List.of(new FeatureGrant("SCH_VIEW_OWN", ScopeType.OWN_SCHEDULE, null)),
+            List.of());
 
     private AuthenticateUser authenticateUser;
 
@@ -65,13 +72,26 @@ class AuthenticateUserTest {
     }
 
     private AuthenticateUser newUseCase(RefreshTokenRepository refreshTokenRepository) {
+        return newUseCase(refreshTokenRepository, TestDoubles.accessTokenIssuer(ACCESS_TOKEN));
+    }
+
+    private AuthenticateUser newUseCase(
+            RefreshTokenRepository refreshTokenRepository, co.sena.iam.application.port.out.AccessTokenIssuer issuer) {
+        return newUseCase(refreshTokenRepository, issuer, TestDoubles.authorizationProfile(authorizationProfile));
+    }
+
+    private AuthenticateUser newUseCase(
+            RefreshTokenRepository refreshTokenRepository,
+            co.sena.iam.application.port.out.AccessTokenIssuer issuer,
+            AuthorizationProfilePort authorizationProfiles) {
         return new AuthenticateUser(
                 users,
                 TestDoubles.userAccess(access),
+                authorizationProfiles,
                 auditLog,
                 refreshTokenRepository,
                 TestDoubles.passwordHasher(),
-                TestDoubles.accessTokenIssuer(ACCESS_TOKEN),
+                issuer,
                 TestDoubles.refreshTokenGenerator(REFRESH_TOKEN),
                 outbox,
                 clock);
@@ -149,6 +169,17 @@ class AuthenticateUserTest {
                 authenticateUser.authenticate(LoginCommand.of("Instructor@SENA.edu.co", PASSWORD));
 
         assertEquals(ACCESS_TOKEN, result.accessToken());
+    }
+
+    @Test
+    @DisplayName("E1 (HU-IAM-010) the access token is issued with feature:scope pairs from the HU-006 evaluation")
+    void issuesAccessTokenWithFeatureScopePairsFromAuthorizationEvaluation() {
+        TestDoubles.RecordingAccessTokenIssuer issuer = new TestDoubles.RecordingAccessTokenIssuer(ACCESS_TOKEN);
+        AuthenticateUser useCase = newUseCase(refreshTokens, issuer);
+
+        useCase.authenticate(LoginCommand.of(EMAIL, PASSWORD));
+
+        assertEquals(List.of("SCH_VIEW_OWN:OWN_SCHEDULE"), issuer.lastFeatureScopes());
     }
 
     // ---------------------------------------------------------------- E4 (HU-IAM-007)
