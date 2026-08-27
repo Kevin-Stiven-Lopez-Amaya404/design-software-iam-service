@@ -11,6 +11,7 @@ import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -35,7 +36,8 @@ import org.springframework.test.web.servlet.MvcResult;
  * IAM_DB_USERNAME=design_software_app IAM_DB_PASSWORD=... ./mvnw verify
  * </pre>
  *
- * <p>All reads are against the seed data; no rows are written or deleted by this test.
+ * <p>Reads are against the seed data; the only writes are the per-test {@link #TEST_EMAIL}
+ * admin fixture created by {@link #loginAsAdmin()} and removed by {@link #tearDown()}.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -80,7 +82,13 @@ class RbacCatalogPostgresIT {
 
     // ---------------------------------------------------------------- helpers
 
-    /** Inserts a SYSTEM_ADMIN test user and returns a valid access token. */
+    /**
+     * Inserts a SYSTEM_ADMIN test user and returns a valid access token.
+     *
+     * <p>The fixture is deliberately left in place for the caller to use the token against
+     * — it is removed by {@link #tearDown()}, not here, since deleting it right after login
+     * would invalidate the token for every request the test still has to make.
+     */
     private String loginAsAdmin() throws Exception {
         UUID userId = UUID.randomUUID();
         jdbc.update("""
@@ -92,19 +100,20 @@ class RbacCatalogPostgresIT {
                 INSERT INTO rbac.user_role (user_id, role_id, assigned_by)
                 SELECT ?, r.id, ? FROM rbac.role r WHERE r.name = 'SYSTEM_ADMIN'
                 """, userId, userId);
-        try {
-            MvcResult result = mvc.perform(
-                            org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                                    .post("/api/v1/auth/login")
-                                    .contentType(MediaType.APPLICATION_JSON)
-                                    .content("{\"email\":\"" + TEST_EMAIL + "\",\"password\":\"" + PASSWORD + "\"}"))
-                    .andExpect(status().isOk())
-                    .andReturn();
-            return json.readTree(result.getResponse().getContentAsString())
-                    .get("access_token").asText();
-        } finally {
-            deleteTestData();
-        }
+        MvcResult result = mvc.perform(
+                        org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                .post("/api/v1/auth/login")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"email\":\"" + TEST_EMAIL + "\",\"password\":\"" + PASSWORD + "\"}"))
+                .andExpect(status().isOk())
+                .andReturn();
+        return json.readTree(result.getResponse().getContentAsString())
+                .get("access_token").asText();
+    }
+
+    @AfterEach
+    void tearDown() {
+        deleteTestData();
     }
 
     private void deleteTestData() {

@@ -746,17 +746,23 @@ components:
           type: [string, 'null']
         features:
           type: array
-          items: { $ref: '#/components/schemas/FeatureBrief' }
+          items: { $ref: '#/components/schemas/Feature' }
 
-    FeatureBrief:
+    Feature:
       type: object
-      required: [code, name, action_level]
+      description: Feature RBAC de un módulo (vista completa).
+      required: [code, name, action_level, scope_type]
       properties:
         code: { type: string, maxLength: 60 }
         name: { type: string, maxLength: 120 }
         action_level:
           type: string
           enum: [READ, WRITE, DELETE, PUBLISH, APPROVE]
+        scope_type:
+          type: string
+          enum: [GLOBAL, TRAINING_CENTER, AREA, OWN_FICHAS, OWN_SCHEDULE, OWN_PROFILE, OWN_FICHA_AS_LEARNER]
+        description:
+          type: [string, 'null']
 
     ScopeOverride:
       type: object
