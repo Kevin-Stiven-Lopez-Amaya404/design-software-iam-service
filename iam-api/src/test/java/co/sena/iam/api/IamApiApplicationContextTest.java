@@ -20,12 +20,18 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * Full-context smoke test.
@@ -60,6 +66,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
                 "org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration"
         }
 )
+@AutoConfigureMockMvc
 class IamApiApplicationContextTest {
 
     @DynamicPropertySource
@@ -95,8 +102,27 @@ class IamApiApplicationContextTest {
     @MockBean UserQueryPort userQueryPort;
     @MockBean JdbcTemplate jdbcTemplate;
 
+    @Autowired MockMvc mvc;
+
     @Test
     void applicationContextLoads() {
         // Passes only when the full MVC handler mapping contains no ambiguous routes.
+    }
+
+    /**
+     * Dispatches through the real {@code DispatcherServlet} against the full handler mapping,
+     * for every {@code @RestController} tag ({@code auth}, {@code modules}, {@code reports}).
+     * A 401 (missing token, caught by {@code GetCurrentUser}) proves the route resolved to its
+     * controller; a 404 here means the mapping is missing or a class failed to register —
+     * {@code applicationContextLoads()} alone would not catch that, since a controller simply
+     * absent from the handler mapping does not fail context startup the way an ambiguous
+     * mapping does.
+     */
+    @Test
+    void everyTaggedEndpointRoutesToItsController() throws Exception {
+        mvc.perform(get("/api/v1/auth/me")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/modules")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/roles")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/reports/login-audit")).andExpect(status().isUnauthorized());
     }
 }
