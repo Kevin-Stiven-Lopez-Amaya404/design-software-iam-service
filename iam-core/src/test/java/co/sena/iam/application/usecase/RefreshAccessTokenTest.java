@@ -6,9 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import co.sena.iam.application.port.in.AuthenticationResult;
 import co.sena.iam.domain.exception.InvalidRefreshTokenException;
 import co.sena.iam.domain.model.ActorType;
+import co.sena.iam.domain.model.AuthorizationProfile;
+import co.sena.iam.domain.model.FeatureGrant;
 import co.sena.iam.domain.model.LockoutState;
 import co.sena.iam.domain.model.RefreshTokenRecord;
 import co.sena.iam.domain.model.RoleAssignment;
+import co.sena.iam.domain.model.ScopeType;
 import co.sena.iam.domain.model.TokenPolicy;
 import co.sena.iam.domain.model.User;
 import co.sena.iam.domain.model.UserAccess;
@@ -40,6 +43,11 @@ class RefreshAccessTokenTest {
     private final UserAccess access = new UserAccess(
             List.of(new RoleAssignment("INSTRUCTOR", UUID.fromString("11111111-1111-1111-1111-111111111111"))),
             List.of("schedule.read"), List.of("scheduling"));
+    private final AuthorizationProfile authorizationProfile = new AuthorizationProfile(
+            List.of(new FeatureGrant("SCH_VIEW_OWN", ScopeType.OWN_SCHEDULE, null)),
+            List.of());
+    private final TestDoubles.RecordingAccessTokenIssuer issuer =
+            new TestDoubles.RecordingAccessTokenIssuer(NEW_ACCESS_TOKEN);
 
     private RefreshAccessToken useCase;
 
@@ -48,8 +56,9 @@ class RefreshAccessTokenTest {
         useCase = new RefreshAccessToken(
                 users,
                 TestDoubles.userAccess(access),
+                TestDoubles.authorizationProfile(authorizationProfile),
                 refreshTokens,
-                TestDoubles.accessTokenIssuer(NEW_ACCESS_TOKEN),
+                issuer,
                 TestDoubles.refreshTokenGenerator(REFRESH_VALUE),
                 clock);
 
@@ -70,6 +79,14 @@ class RefreshAccessTokenTest {
         assertEquals(REFRESH_VALUE, result.refreshToken());
         assertEquals(TokenPolicy.ACCESS_TOKEN_TTL.toSeconds(), result.expiresInSeconds());
         assertEquals(USER_ID, result.user().id());
+    }
+
+    @Test
+    @DisplayName("(HU-IAM-010) the recalculated access token carries feature:scope pairs from the HU-006 evaluation")
+    void refreshRecalculatesFeatureScopePairs() {
+        useCase.refresh(REFRESH_VALUE);
+
+        assertEquals(List.of("SCH_VIEW_OWN:OWN_SCHEDULE"), issuer.lastFeatureScopes());
     }
 
     @Test

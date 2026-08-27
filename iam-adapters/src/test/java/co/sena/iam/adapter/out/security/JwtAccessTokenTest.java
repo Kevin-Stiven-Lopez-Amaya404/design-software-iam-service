@@ -13,6 +13,8 @@ import co.sena.iam.domain.model.TokenClaims;
 import co.sena.iam.domain.model.TokenPolicy;
 import co.sena.iam.domain.model.User;
 import co.sena.iam.domain.model.UserAccess;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
@@ -30,6 +32,7 @@ class JwtAccessTokenTest {
     private static final String ISSUER = "https://iam.test.sena.edu.co";
     private static final UUID USER_ID = UUID.fromString("c0000000-0000-0000-0000-000000000042");
     private static final UUID SESSION_ID = UUID.fromString("a0000000-0000-0000-0000-000000000001");
+    private static final List<String> FEATURE_SCOPES = List.of("SCH_VIEW_OWN:OWN_SCHEDULE");
 
     private static String privateKeyPem;
     private static String otherPrivateKeyPem;
@@ -51,7 +54,7 @@ class JwtAccessTokenTest {
     }
 
     private static RsaSigningKeys keys(String privateKey) {
-        return new RsaSigningKeys(new JwtProperties(privateKey, ISSUER, "test-key"));
+        return new RsaSigningKeys(new JwtProperties(privateKey, ISSUER, "test-key", null, null));
     }
 
     private static User user() {
@@ -72,7 +75,7 @@ class JwtAccessTokenTest {
         RsaSigningKeys signingKeys = keys(privateKeyPem);
         Instant now = Instant.now();
         String token = new JwtAccessTokenIssuer(signingKeys)
-                .issue(user(), access(), SESSION_ID, now, now.plus(TokenPolicy.ACCESS_TOKEN_TTL));
+                .issue(user(), access(), FEATURE_SCOPES, SESSION_ID, now, now.plus(TokenPolicy.ACCESS_TOKEN_TTL));
 
         TokenClaims claims = new JwtAccessTokenVerifier(signingKeys).verify(token);
         assertEquals(USER_ID, claims.userId());
@@ -81,11 +84,33 @@ class JwtAccessTokenTest {
     }
 
     @Test
+    @DisplayName("(HU-IAM-010 E1) sub, roles, features (CODE:SCOPE_TYPE) and exp are stamped on the token")
+    void stampsSubRolesFeatureScopesAndExpiry() {
+        RsaSigningKeys signingKeys = keys(privateKeyPem);
+        Instant now = Instant.now();
+        Instant expiresAt = now.plus(TokenPolicy.ACCESS_TOKEN_TTL);
+
+        String token = new JwtAccessTokenIssuer(signingKeys)
+                .issue(user(), access(), FEATURE_SCOPES, SESSION_ID, now, expiresAt);
+
+        Claims claims = Jwts.parser()
+                .verifyWith(signingKeys.publicKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        assertEquals(USER_ID.toString(), claims.getSubject());
+        assertEquals(List.of("INSTRUCTOR"), claims.get("roles", List.class));
+        assertEquals(FEATURE_SCOPES, claims.get("features", List.class));
+        assertEquals(expiresAt.getEpochSecond(), claims.getExpiration().toInstant().getEpochSecond());
+    }
+
+    @Test
     @DisplayName("a token signed by another key is rejected")
     void rejectsTokenSignedByAnotherKey() {
         Instant now = Instant.now();
         String forged = new JwtAccessTokenIssuer(keys(otherPrivateKeyPem))
-                .issue(user(), access(), SESSION_ID, now, now.plus(TokenPolicy.ACCESS_TOKEN_TTL));
+                .issue(user(), access(), FEATURE_SCOPES, SESSION_ID, now, now.plus(TokenPolicy.ACCESS_TOKEN_TTL));
         JwtAccessTokenVerifier verifier = new JwtAccessTokenVerifier(keys(privateKeyPem));
 
         assertThrows(UnauthenticatedException.class, () -> verifier.verify(forged));
@@ -97,7 +122,7 @@ class JwtAccessTokenTest {
         RsaSigningKeys signingKeys = keys(privateKeyPem);
         Instant longAgo = Instant.now().minusSeconds(3600);
         String expired = new JwtAccessTokenIssuer(signingKeys)
-                .issue(user(), access(), SESSION_ID, longAgo, longAgo.plusSeconds(60));
+                .issue(user(), access(), FEATURE_SCOPES, SESSION_ID, longAgo, longAgo.plusSeconds(60));
 
         assertThrows(UnauthenticatedException.class,
                 () -> new JwtAccessTokenVerifier(signingKeys).verify(expired));
@@ -124,13 +149,44 @@ class JwtAccessTokenTest {
     @DisplayName("startup fails loudly when the signing key is missing or unusable")
     void refusesToStartWithoutAUsableKey() {
         assertThrows(IllegalStateException.class,
-                () -> new RsaSigningKeys(new JwtProperties(null, ISSUER, null)));
+                () -> new RsaSigningKeys(new JwtProperties(null, ISSUER, null, null, null)));
         assertThrows(IllegalStateException.class,
-                () -> new RsaSigningKeys(new JwtProperties("   ", ISSUER, null)));
+                () -> new RsaSigningKeys(new JwtProperties("   ", ISSUER, null, null, null)));
         assertThrows(IllegalStateException.class,
-                () -> new RsaSigningKeys(new JwtProperties(privateKeyPem, null, null)));
+                () -> new RsaSigningKeys(new JwtProperties(privateKeyPem, null, null, null, null)));
         assertThrows(IllegalStateException.class,
-                () -> new RsaSigningKeys(new JwtProperties("not-a-key", ISSUER, null)));
+                () -> new RsaSigningKeys(new JwtProperties("not-a-key", ISSUER, null, null, null)));
+    }
+
+    @Test
+    @DisplayName("(HU-IAM-010 E3) a configured previous key is exposed by its own kid, for JWKS during rotation")
+    void exposesThePreviousKeyDuringRotation() throws NoSuchAlgorithmException {
+        KeyPair previous = newKeyPair();
+        String previousPublicKeyPem = Base64.getEncoder().encodeToString(previous.getPublic().getEncoded());
+
+        RsaSigningKeys signingKeys = new RsaSigningKeys(
+                new JwtProperties(privateKeyPem, ISSUER, "iam-rsa-2", previousPublicKeyPem, "iam-rsa-1"));
+
+        assertEquals(previous.getPublic(), signingKeys.previousPublicKey().orElseThrow());
+        assertEquals("iam-rsa-1", signingKeys.previousKeyId().orElseThrow());
+    }
+
+    @Test
+    @DisplayName("(HU-IAM-010 E3) outside a rotation window, there is no previous key")
+    void noPreviousKeyOutsideARotationWindow() {
+        RsaSigningKeys signingKeys = keys(privateKeyPem);
+
+        assertTrue(signingKeys.previousPublicKey().isEmpty());
+        assertTrue(signingKeys.previousKeyId().isEmpty());
+    }
+
+    @Test
+    @DisplayName("(HU-IAM-010 E3) a previous public key without its kid fails startup")
+    void previousKeyWithoutKidFailsStartup() throws NoSuchAlgorithmException {
+        String previousPublicKeyPem = Base64.getEncoder().encodeToString(newKeyPair().getPublic().getEncoded());
+
+        assertThrows(IllegalStateException.class, () -> new RsaSigningKeys(
+                new JwtProperties(privateKeyPem, ISSUER, "iam-rsa-2", previousPublicKeyPem, null)));
     }
 
     @Test

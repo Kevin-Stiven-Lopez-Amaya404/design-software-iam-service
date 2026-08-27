@@ -29,6 +29,7 @@ procedimiento para actualizarlos. Nada generado se commitea.
 | `IAM_JWT_PRIVATE_KEY` | sí | Clave RSA privada PKCS#8 (PEM o base64) para firmar los access token RS256 |
 | `IAM_JWT_ISSUER` | sí | Claim `iss`, exigido también al verificar |
 | `IAM_JWT_KEY_ID` | no | `kid` del header (default `iam-rsa-1`), para rotación y JWKS |
+| `IAM_JWT_PREVIOUS_PUBLIC_KEY` / `IAM_JWT_PREVIOUS_KEY_ID` | no | Clave pública RSA X.509 (PEM o base64) y `kid` de la clave saliente durante una ventana de rotación (HU-IAM-010 E3); ambas o ninguna. Se publican en `GET /api/v1/auth/.well-known/jwks.json` junto a la clave actual, así los tokens firmados antes de rotar siguen verificando localmente hasta que expiran (15 min). |
 | `SPRING_RABBITMQ_HOST` | no | Broker RabbitMQ. **Si se define, se activa el relay de outbox** (HU-IAM-007) que publica en el exchange `iam-events`. Sin él, los eventos quedan solo *staged* en `identity.outbox`. |
 | `SPRING_RABBITMQ_USERNAME` / `SPRING_RABBITMQ_PASSWORD` | condicional | Credenciales del broker cuando el relay está activo (sin defaults de secreto). |
 | `SPRING_RABBITMQ_PORT` / `SPRING_RABBITMQ_VIRTUAL_HOST` | no | Puerto (`5672`) y vhost (`/`) del broker. |
@@ -42,6 +43,23 @@ Generar una clave de desarrollo:
 ```bash
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out iam-dev-key.pem
 ```
+
+## Verificación local del JWT (HU-IAM-010)
+
+El `access_token` (RS256) lleva `sub`, `roles`, `features` (pares `CODE:SCOPE_TYPE`
+construidos con la evaluación de HU-IAM-006 — grants por rol más overrides, ver
+[`AuthorizationPolicy.effectiveFeatureScopes`](iam-core/src/main/java/co/sena/iam/domain/service/AuthorizationPolicy.java)),
+`training_center_id` y `exp`. El edge (Traefik, ADR-007) y cada servicio downstream verifican
+firma y claims **sin llamar a iam** por request, usando la clave pública publicada en:
+
+```
+GET /api/v1/auth/.well-known/jwks.json
+```
+
+Formato JWKS estándar (RFC 7517); durante una rotación de clave se publican dos entradas
+(actual + saliente, cada una con su `kid`). El detalle completo — estructura del JWT,
+algoritmo de verificación por servicio, aplicación de scope en queries y rotación — está en
+`07-api/authentication.md` en `design-software-docs` (fuente normativa).
 
 ## Build y pruebas
 
