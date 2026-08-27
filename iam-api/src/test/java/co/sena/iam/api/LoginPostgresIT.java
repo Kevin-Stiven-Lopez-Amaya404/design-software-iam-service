@@ -118,6 +118,11 @@ class LoginPostgresIT {
 
     /** Targeted by the test marker only. */
     private void deleteTestData() {
+        jdbc.update("""
+                DELETE FROM identity.outbox
+                 WHERE payload->'data'->>'user_id' IN (
+                     SELECT id::text FROM identity."user" WHERE email = ?)
+                """, TEST_EMAIL);
         jdbc.update("DELETE FROM identity_audit.audit_login WHERE email_attempted = ?", TEST_EMAIL);
         jdbc.update("DELETE FROM identity.\"user\" WHERE email = ?", TEST_EMAIL);
     }
@@ -154,6 +159,10 @@ class LoginPostgresIT {
         assertThat(((Number) user.get("failed_attempts")).intValue()).isZero();
         assertThat(user.get("locked_until")).isNull();
         assertThat(user.get("last_login_at")).isNotNull();
+
+        assertThat(stagedOutboxEventTypes())
+                .as("a successful login always stages iam.session.started, independent of the relay")
+                .contains("iam.session.started");
     }
 
     @Test
@@ -301,6 +310,12 @@ class LoginPostgresIT {
 
     private List<Map<String, Object>> refreshTokenRows() {
         return jdbc.queryForList("SELECT * FROM session.refresh_token WHERE user_id = ?", userId);
+    }
+
+    private List<String> stagedOutboxEventTypes() {
+        return jdbc.queryForList(
+                "SELECT event_type FROM identity.outbox WHERE payload->'data'->>'user_id' = ?",
+                String.class, userId.toString());
     }
 
     private Map<String, Object> userRow() {
