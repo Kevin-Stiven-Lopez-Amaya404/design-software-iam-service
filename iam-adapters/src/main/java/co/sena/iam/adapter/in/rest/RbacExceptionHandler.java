@@ -2,7 +2,6 @@ package co.sena.iam.adapter.in.rest;
 
 import co.sena.iam.contract.model.Login400Response;
 import co.sena.iam.domain.exception.RoleNotFoundException;
-import co.sena.iam.domain.exception.UnauthenticatedException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,15 +24,6 @@ class RbacExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiErrors.of(
                 IamErrorCode.NOT_FOUND,
                 "El rol solicitado no existe.",
-                traceId));
-    }
-
-    @ExceptionHandler(UnauthenticatedException.class)
-    ResponseEntity<Login400Response> handleUnauthenticated(HttpServletRequest request) {
-        String traceId = ApiErrors.traceId(request);
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiErrors.of(
-                IamErrorCode.UNAUTHENTICATED,
-                "Token ausente, inválido o expirado.",
                 traceId));
     }
 }

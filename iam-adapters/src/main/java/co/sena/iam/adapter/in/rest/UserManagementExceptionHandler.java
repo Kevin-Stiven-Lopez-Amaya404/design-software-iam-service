@@ -4,8 +4,8 @@ import co.sena.iam.contract.model.Login400Response;
 import co.sena.iam.domain.exception.EmailAlreadyExistsException;
 import co.sena.iam.domain.exception.FeatureNotFoundException;
 import co.sena.iam.domain.exception.RoleAlreadyAssignedException;
-import co.sena.iam.domain.exception.RoleNotFoundException;
 import co.sena.iam.domain.exception.ScopeOverrideNotFoundException;
+import co.sena.iam.domain.exception.UnauthenticatedException;
 import co.sena.iam.domain.exception.UserNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
@@ -31,11 +31,12 @@ class UserManagementExceptionHandler {
                 IamErrorCode.EMAIL_CONFLICT, ex.getMessage(), ApiErrors.traceId(request)));
     }
 
-    @ExceptionHandler(RoleNotFoundException.class)
-    ResponseEntity<Login400Response> handleRoleNotFound(
-            RoleNotFoundException ex, HttpServletRequest request) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiErrors.of(
-                IamErrorCode.ROLE_NOT_FOUND, ex.getMessage(), ApiErrors.traceId(request)));
+    @ExceptionHandler(UnauthenticatedException.class)
+    ResponseEntity<Login400Response> handleUnauthenticated(HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(ApiErrors.of(
+                IamErrorCode.UNAUTHENTICATED,
+                "Token ausente, inválido o expirado.",
+                ApiErrors.traceId(request)));
     }
 
     @ExceptionHandler(RoleAlreadyAssignedException.class)
