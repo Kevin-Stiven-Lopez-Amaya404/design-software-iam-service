@@ -111,9 +111,9 @@ class RbacController implements ModulesApi, RolesApi {
 
     @Override
     public ResponseEntity<UserRole> assignUserRole(UUID id, AssignRoleRequest body) {
-        requireAuthenticated();
+        AuthenticatedIdentity caller = requireAuthenticated();
         var cmd = new AssignRoleCommand(
-                id, null, body.getRoleName(),
+                id, caller.user().id(), body.getRoleName(),
                 body.getTrainingCenterId(),
                 body.getExpiresAt());
         UserRoleResult result = userService.assignRole(cmd);
@@ -190,7 +190,9 @@ class RbacController implements ModulesApi, RolesApi {
         return new ModuleFeaturesInner()
                 .code(f.code())
                 .name(f.name())
-                .actionLevel(ModuleFeaturesInner.ActionLevelEnum.fromValue(f.actionLevel()));
+                .description(f.description())
+                .actionLevel(ModuleFeaturesInner.ActionLevelEnum.fromValue(f.actionLevel()))
+                .scopeType(ModuleFeaturesInner.ScopeTypeEnum.fromValue(f.scopeType()));
     }
 
     private static Role toRole(RbacRole r) {
