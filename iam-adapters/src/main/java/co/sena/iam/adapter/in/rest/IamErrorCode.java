@@ -20,6 +20,9 @@ final class IamErrorCode {
     /** 401 — bearer token missing, malformed or expired. */
     static final String UNAUTHENTICATED = "UNAUTHENTICATED";
 
+    /** 403 — authenticated, but the caller lacks the required feature/scope grant (RBAC). */
+    static final String FORBIDDEN = "FORBIDDEN";
+
     /** 404 — session not found for the given user. */
     static final String SESSION_NOT_FOUND = "IAM_SESSION_NOT_FOUND";
 
