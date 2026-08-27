@@ -7,6 +7,7 @@ import co.sena.iam.application.port.in.CreateUserUseCase;
 import co.sena.iam.application.port.in.DeactivateUserUseCase;
 import co.sena.iam.application.port.in.EvaluateAuthorizationUseCase;
 import co.sena.iam.application.port.in.GetCurrentUserUseCase;
+import co.sena.iam.application.port.in.GetLoginAuditReportUseCase;
 import co.sena.iam.application.port.in.GrantScopeOverrideUseCase;
 import co.sena.iam.application.port.in.ListScopeOverridesUseCase;
 import co.sena.iam.application.port.in.RevokeScopeOverrideUseCase;
@@ -26,6 +27,7 @@ import co.sena.iam.application.port.out.AccessTokenIssuer;
 import co.sena.iam.application.port.out.AccessTokenVerifier;
 import co.sena.iam.application.port.out.AuthorizationProfilePort;
 import co.sena.iam.application.port.out.ScopeOverridePort;
+import co.sena.iam.application.port.out.LoginAuditQueryPort;
 import co.sena.iam.application.port.out.LoginAuditRepository;
 import co.sena.iam.application.port.out.OutboxPort;
 import co.sena.iam.application.port.out.PasswordGenerator;
@@ -47,6 +49,7 @@ import co.sena.iam.application.usecase.CreateUser;
 import co.sena.iam.application.usecase.DeactivateUser;
 import co.sena.iam.application.usecase.EvaluateAuthorization;
 import co.sena.iam.application.usecase.GetCurrentUser;
+import co.sena.iam.application.usecase.GetLoginAuditReport;
 import co.sena.iam.application.usecase.GrantScopeOverride;
 import co.sena.iam.application.usecase.ListScopeOverrides;
 import co.sena.iam.application.usecase.RevokeScopeOverride;
@@ -227,5 +230,13 @@ class UseCaseConfiguration {
     ListScopeOverridesUseCase listScopeOverridesUseCase(
             UserRepository users, ScopeOverridePort scopeOverrides, Clock clock) {
         return new ListScopeOverrides(users, scopeOverrides, clock);
+    }
+
+    // ---------------------------------------------------------------- HU-IAM-009 use cases
+
+    @Bean
+    GetLoginAuditReportUseCase getLoginAuditReportUseCase(
+            EvaluateAuthorizationUseCase evaluateAuthorization, LoginAuditQueryPort loginAuditQuery) {
+        return new GetLoginAuditReport(evaluateAuthorization, loginAuditQuery);
     }
 }
