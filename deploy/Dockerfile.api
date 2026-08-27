@@ -17,5 +17,9 @@ COPY --from=build /src/iam-api/target/iam-api-0.1.0.jar app.jar
 
 EXPOSE 8080
 
-# OTel auto-instrumentation via agent; configure with OTEL_EXPORTER_OTLP_ENDPOINT (ADR-008)
+# OTel auto-instrumentation via agent (ADR-008): HTTP + JDBC spans, zero code. Configure at
+# runtime via env, no secrets — OTEL_EXPORTER_OTLP_ENDPOINT (collector), OTEL_SERVICE_NAME
+# (defaults to spring.application.name=iam-service if unset), OTEL_RESOURCE_ATTRIBUTES
+# (e.g. deployment.environment=develop). Missing endpoint just disables export, doesn't fail
+# startup. Also injects trace_id/span_id into the logback MDC for E3's JSON logs.
 ENTRYPOINT ["java", "-javaagent:/app/otel-agent.jar", "-jar", "/app/app.jar"]

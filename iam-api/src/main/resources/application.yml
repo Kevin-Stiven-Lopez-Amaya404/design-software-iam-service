@@ -14,6 +14,13 @@ spring:
   sql:
     init:
       mode: never
+  # HU-IAM-011: Boot's default Rabbit health contributor probes the broker at its default
+  # host (localhost) even when spring.rabbitmq.host is unset, which would misreport it as
+  # DOWN in /actuator/health for environments where the HU-IAM-007 relay is intentionally
+  # off. BrokerHealthConfiguration registers its own "broker" indicator instead, gated on
+  # spring.rabbitmq.host, which HealthController's /ready consults directly.
+  autoconfigure:
+    exclude: org.springframework.boot.actuate.autoconfigure.amqp.RabbitHealthContributorAutoConfiguration
 
 # Signing material for the RS256 access tokens. No defaults: a missing secret must stop
 # the service at startup, never fall back to something guessable.
