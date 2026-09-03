@@ -12,7 +12,7 @@ import co.sena.iam.contract.api.ModulesApi;
 import co.sena.iam.contract.api.RolesApi;
 import co.sena.iam.contract.model.AssignRoleRequest;
 import co.sena.iam.contract.model.Module;
-import co.sena.iam.contract.model.ModuleFeaturesInner;
+import co.sena.iam.contract.model.Feature;
 import co.sena.iam.contract.model.Role;
 import co.sena.iam.contract.model.RoleFeature;
 import co.sena.iam.contract.model.ScopeOverride;
@@ -186,13 +186,13 @@ class RbacController implements ModulesApi, RolesApi {
                 .features(m.features().stream().map(RbacController::toFeature).toList());
     }
 
-    private static ModuleFeaturesInner toFeature(co.sena.iam.domain.model.RbacFeature f) {
-        return new ModuleFeaturesInner()
+    private static Feature toFeature(co.sena.iam.domain.model.RbacFeature f) {
+        return new Feature()
                 .code(f.code())
                 .name(f.name())
                 .description(f.description())
-                .actionLevel(ModuleFeaturesInner.ActionLevelEnum.fromValue(f.actionLevel()))
-                .scopeType(ModuleFeaturesInner.ScopeTypeEnum.fromValue(f.scopeType()));
+                .actionLevel(Feature.ActionLevelEnum.fromValue(f.actionLevel()))
+                .scopeType(Feature.ScopeTypeEnum.fromValue(f.scopeType()));
     }
 
     private static Role toRole(RbacRole r) {
