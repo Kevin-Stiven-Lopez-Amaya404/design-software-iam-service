@@ -11,6 +11,7 @@ import co.sena.iam.application.port.in.RefreshAccessTokenUseCase;
 import co.sena.iam.application.port.in.RequestPasswordResetUseCase;
 import co.sena.iam.application.port.out.AccessTokenVerifier;
 import co.sena.iam.contract.api.AuthApi;
+import co.sena.iam.contract.model.AuthUser;
 import co.sena.iam.contract.model.LoginRequest;
 import co.sena.iam.contract.model.MeResponse;
 import co.sena.iam.contract.model.MeResponseRolesInner;
@@ -18,7 +19,6 @@ import co.sena.iam.contract.model.PasswordResetConfirm;
 import co.sena.iam.contract.model.PasswordResetRequest;
 import co.sena.iam.contract.model.RefreshRequest;
 import co.sena.iam.contract.model.TokenResponse;
-import co.sena.iam.contract.model.TokenResponseUser;
 import co.sena.iam.domain.model.RoleAssignment;
 import co.sena.iam.domain.model.TokenClaims;
 import co.sena.iam.domain.model.User;
@@ -132,8 +132,8 @@ class AuthController implements AuthApi {
                 .user(authUser(result.user(), result.access()));
     }
 
-    private static TokenResponseUser authUser(User user, UserAccess access) {
-        return new TokenResponseUser()
+    private static AuthUser authUser(User user, UserAccess access) {
+        return new AuthUser()
                 .id(user.id())
                 .email(user.email())
                 .fullName(user.fullName())

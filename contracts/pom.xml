@@ -55,6 +55,17 @@
               <generateModelDocumentation>false</generateModelDocumentation>
               <supportingFilesToGenerate>ApiUtil.java</supportingFilesToGenerate>
               <!--
+                Keep the Java model names stable when OpenAPI Generator
+                materializes these contract references as inline schemas.
+                The API contract remains the source of truth; this only avoids
+                generated names such as TokenResponseUser and
+                ModuleFeaturesInner on a clean build.
+              -->
+              <inlineSchemaNameMappings>
+                <TokenResponse_user>AuthUser</TokenResponse_user>
+                <Module_features_inner>Feature</Module_features_inner>
+              </inlineSchemaNameMappings>
+              <!--
                 Naming note: the shared error envelope (_shared.yaml#/components/schemas/Error)
                 arrives through an external $ref, so the generator names it after the first
                 operation that returns it -> Login400Response / Login400ResponseError.
