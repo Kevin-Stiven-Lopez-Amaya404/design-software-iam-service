@@ -62,8 +62,8 @@
                 ModuleFeaturesInner on a clean build.
               -->
               <inlineSchemaNameMappings>
-                <TokenResponse_user>AuthUser</TokenResponse_user>
-                <Module_features_inner>Feature</Module_features_inner>
+                <inlineSchemaNameMapping>TokenResponse_user=AuthUser</inlineSchemaNameMapping>
+                <inlineSchemaNameMapping>Module_features_inner=Feature</inlineSchemaNameMapping>
               </inlineSchemaNameMappings>
               <!--
                 Naming note: the shared error envelope (_shared.yaml#/components/schemas/Error)
