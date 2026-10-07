@@ -16,6 +16,7 @@ import co.sena.iam.domain.model.LockoutState;
 import co.sena.iam.domain.model.OutboxEvent;
 import co.sena.iam.domain.model.User;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -82,7 +83,30 @@ public final class CreateUser implements CreateUserUseCase {
         Map<String, Object> payload = new HashMap<>();
         payload.put("user_id", userId.toString());
         payload.put("email", command.email());
+        payload.put("first_name", command.firstName());
+        payload.put("last_name", command.lastName());
         payload.put("actor_type", command.actorType().name());
+        if (command.actorId() != null) {
+            payload.put("actor_id", command.actorId().toString());
+        }
+        if (command.documentType() != null) {
+            payload.put("document_type", command.documentType());
+        }
+        if (command.documentNumber() != null) {
+            payload.put("document_number", command.documentNumber());
+        }
+        if (command.defaultMaxHoursPerWeek() != null) {
+            payload.put("default_max_hours_per_week", command.defaultMaxHoursPerWeek());
+        }
+        if (command.initialRole() == null) {
+            payload.put("roles", List.of());
+        } else {
+            Map<String, Object> role = new HashMap<>();
+            role.put("role_name", command.initialRole());
+            role.put("training_center_id", command.trainingCenterId() == null
+                    ? null : command.trainingCenterId().toString());
+            payload.put("roles", List.of(role));
+        }
         outbox.stage(OutboxEvent.of("iam.user.created", payload));
 
         return new UserCreateResult(userId, command.email(), tempPassword);

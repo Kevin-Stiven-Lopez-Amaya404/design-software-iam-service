@@ -631,6 +631,18 @@ components:
         actor_id:
           type: [string, 'null']
           format: uuid
+        document_type:
+          type: [string, 'null']
+          enum: [CC, CE, PA, PE, null]
+          description: Tipo de documento requerido por actors-service para materializar INSTRUCTOR/LEARNER.
+        document_number:
+          type: [string, 'null']
+          maxLength: 20
+          description: Numero de documento requerido por actors-service para materializar INSTRUCTOR/LEARNER.
+        default_max_hours_per_week:
+          type: [number, 'null']
+          minimum: 0
+          description: Tope base de horas requerido por actors-service para materializar INSTRUCTOR.
         initial_role: { type: string, description: Nombre del rol inicial a asignar. }
         training_center_id:
           type: [string, 'null']

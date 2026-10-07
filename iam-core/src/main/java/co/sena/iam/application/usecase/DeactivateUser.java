@@ -34,13 +34,16 @@ public final class DeactivateUser implements DeactivateUserUseCase {
 
     @Override
     public void deactivate(UUID userId) {
-        users.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+        var user = users.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
         userWriter.deactivate(userId);
-        refreshTokens.revokeAllActiveForUser(userId, Instant.now());
+        Instant deactivatedAt = Instant.now();
+        refreshTokens.revokeAllActiveForUser(userId, deactivatedAt);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("user_id", userId.toString());
+        payload.put("email", user.email());
+        payload.put("deactivated_at", deactivatedAt.toString());
         outbox.stage(OutboxEvent.of("iam.user.deactivated", payload));
     }
 }
