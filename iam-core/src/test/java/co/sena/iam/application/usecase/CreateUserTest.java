@@ -48,7 +48,8 @@ class CreateUserTest {
     @Test
     @DisplayName("creates user, saves it, and stages iam.user.created event")
     void creates_user_and_stages_created_event() {
-        var cmd = new CreateUserCommand("ana@sena.edu.co", "Ana", "Ríos", ActorType.INSTRUCTOR, null, null, null);
+        var cmd = new CreateUserCommand("ana@sena.edu.co", "Ana", "Ríos", ActorType.INSTRUCTOR, null,
+                "CC", "1234567890", java.math.BigDecimal.valueOf(40.0), null, null);
 
         UserCreateResult result = createUser.create(cmd);
 
@@ -66,6 +67,13 @@ class CreateUserTest {
         assertThat(event.eventType()).isEqualTo("iam.user.created");
         assertThat(event.payload()).containsKey("user_id");
         assertThat(event.payload().get("email")).isEqualTo("ana@sena.edu.co");
+        assertThat(event.payload().get("first_name")).isEqualTo("Ana");
+        assertThat(event.payload().get("last_name")).isEqualTo("Ríos");
+        assertThat(event.payload().get("actor_type")).isEqualTo("INSTRUCTOR");
+        assertThat(event.payload().get("document_type")).isEqualTo("CC");
+        assertThat(event.payload().get("document_number")).isEqualTo("1234567890");
+        assertThat(event.payload().get("default_max_hours_per_week")).isEqualTo(java.math.BigDecimal.valueOf(40.0));
+        assertThat(event.payload().get("roles")).asList().isEmpty();
     }
 
     @Test
@@ -77,6 +85,13 @@ class CreateUserTest {
 
         assertThat(rolePort.allAssignments()).hasSize(1);
         assertThat(rolePort.allAssignments().get(0).roleName()).isEqualTo("INSTRUCTOR");
+
+        OutboxEvent event = outbox.singleEvent();
+        assertThat(event.payload().get("roles")).asList()
+                .singleElement()
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("role_name", "INSTRUCTOR")
+                .containsEntry("training_center_id", null);
     }
 
     @Test

@@ -62,6 +62,8 @@ class DeactivateUserTest {
         OutboxEvent event = outbox.singleEvent();
         assertThat(event.eventType()).isEqualTo("iam.user.deactivated");
         assertThat(event.payload().get("user_id")).isEqualTo(userId.toString());
+        assertThat(event.payload().get("email")).isEqualTo("active@sena.edu.co");
+        assertThat(event.payload()).containsKey("deactivated_at");
     }
 
     @Test

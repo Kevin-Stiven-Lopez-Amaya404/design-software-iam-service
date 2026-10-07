@@ -10,8 +10,16 @@ public record CreateUserCommand(
         String lastName,
         ActorType actorType,
         UUID actorId,
+        String documentType,
+        String documentNumber,
+        java.math.BigDecimal defaultMaxHoursPerWeek,
         String initialRole,
         UUID trainingCenterId) {
+
+    public CreateUserCommand(String email, String firstName, String lastName, ActorType actorType,
+            UUID actorId, String initialRole, UUID trainingCenterId) {
+        this(email, firstName, lastName, actorType, actorId, null, null, null, initialRole, trainingCenterId);
+    }
 
     public CreateUserCommand {
         Objects.requireNonNull(email, "email");

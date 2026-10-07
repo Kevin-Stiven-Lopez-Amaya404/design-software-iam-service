@@ -62,6 +62,9 @@ class UserController implements UsersApi {
                 body.getEmail(), body.getFirstName(), body.getLastName(),
                 ActorType.valueOf(body.getActorType().getValue()),
                 body.getActorId(),
+                body.getDocumentType() != null ? body.getDocumentType().getValue() : null,
+                body.getDocumentNumber(),
+                body.getDefaultMaxHoursPerWeek(),
                 body.getInitialRole(),
                 body.getTrainingCenterId());
         UserCreateResult result = userService.createUser(cmd);
