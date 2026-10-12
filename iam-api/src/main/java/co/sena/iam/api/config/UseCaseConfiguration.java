@@ -24,6 +24,9 @@ import co.sena.iam.application.port.in.RevokeUserRoleUseCase;
 import co.sena.iam.application.port.in.RevokeUserSessionUseCase;
 import co.sena.iam.application.port.in.UpdateUserUseCase;
 import co.sena.iam.application.port.out.AccessTokenIssuer;
+import co.sena.iam.adapter.out.client.ActorsActiveFichaClient;
+import co.sena.iam.adapter.out.security.JwtAccessTokenIssuer;
+import co.sena.iam.adapter.out.security.RsaSigningKeys;
 import co.sena.iam.application.port.out.AccessTokenVerifier;
 import co.sena.iam.application.port.out.AuthorizationProfilePort;
 import co.sena.iam.application.port.out.ScopeOverridePort;
@@ -72,6 +75,11 @@ import org.springframework.context.annotation.Configuration;
 /** Wiring only — use cases live in iam-core and know nothing about Spring. */
 @Configuration(proxyBeanMethods = false)
 class UseCaseConfiguration {
+
+    @Bean
+    AccessTokenIssuer accessTokenIssuer(RsaSigningKeys keys, ActorsActiveFichaClient actors) {
+        return new JwtAccessTokenIssuer(keys, actors);
+    }
 
     @Bean
     Clock clock() {

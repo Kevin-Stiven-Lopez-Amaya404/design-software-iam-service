@@ -44,6 +44,13 @@ iam:
       poll-interval-ms: ${IAM_OUTBOX_RELAY_POLL_INTERVAL_MS:5000}
       initial-delay-ms: ${IAM_OUTBOX_RELAY_INITIAL_DELAY_MS:5000}
       batch-size: ${IAM_OUTBOX_RELAY_BATCH_SIZE:100}
+  actors:
+    active-ficha-url: ${IAM_ACTORS_ACTIVE_FICHA_URL:}
+    mtls:
+      key-store: ${IAM_ACTORS_MTLS_KEY_STORE:}
+      key-store-password: ${IAM_ACTORS_MTLS_KEY_STORE_PASSWORD:}
+      trust-store: ${IAM_ACTORS_MTLS_TRUST_STORE:}
+      trust-store-password: ${IAM_ACTORS_MTLS_TRUST_STORE_PASSWORD:}
 
 server:
   port: 8080

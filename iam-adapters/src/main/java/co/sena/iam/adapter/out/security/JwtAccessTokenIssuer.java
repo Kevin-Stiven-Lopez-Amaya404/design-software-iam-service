@@ -3,12 +3,12 @@ package co.sena.iam.adapter.out.security;
 import co.sena.iam.application.port.out.AccessTokenIssuer;
 import co.sena.iam.domain.model.User;
 import co.sena.iam.domain.model.UserAccess;
+import co.sena.iam.adapter.out.client.ActorsActiveFichaClient;
 import io.jsonwebtoken.Jwts;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.stereotype.Component;
 
 /**
  * RS256 access token, as declared by the contract ({@code bearerAuth}: JWT RS256 issued by
@@ -19,20 +19,25 @@ import org.springframework.stereotype.Component;
  * {@code authentication.md}), so a downstream service can authorize a request against its
  * own feature+scope requirement without calling back to iam.
  */
-@Component
-class JwtAccessTokenIssuer implements AccessTokenIssuer {
+public class JwtAccessTokenIssuer implements AccessTokenIssuer {
 
     private final RsaSigningKeys keys;
+    private final ActorsActiveFichaClient actors;
+
+    public JwtAccessTokenIssuer(RsaSigningKeys keys, ActorsActiveFichaClient actors) {
+        this.keys = keys;
+        this.actors = actors;
+    }
 
     JwtAccessTokenIssuer(RsaSigningKeys keys) {
-        this.keys = keys;
+        this(keys, null);
     }
 
     @Override
     public String issue(
             User user, UserAccess access, List<String> featureScopes,
             UUID sessionId, Instant issuedAt, Instant expiresAt) {
-        return Jwts.builder()
+        var builder = Jwts.builder()
                 .header().keyId(keys.keyId()).and()
                 .id(UUID.randomUUID().toString())
                 .issuer(keys.issuer())
@@ -46,9 +51,11 @@ class JwtAccessTokenIssuer implements AccessTokenIssuer {
                 .claim("actor_id", user.actorId() == null ? null : user.actorId().toString())
                 .claim("roles", access.roleNames())
                 .claim("features", featureScopes)
-                .claim("training_center_id", trainingCenterId(access))
-                .signWith(keys.privateKey(), Jwts.SIG.RS256)
-                .compact();
+                .claim("training_center_id", trainingCenterId(access));
+        if (actors != null && "LEARNER".equals(user.actorType().name())) {
+            actors.findActiveFicha(user.id()).ifPresent(ficha -> builder.claim("ficha_id", ficha.toString()));
+        }
+        return builder.signWith(keys.privateKey(), Jwts.SIG.RS256).compact();
     }
 
     private static String trainingCenterId(UserAccess access) {

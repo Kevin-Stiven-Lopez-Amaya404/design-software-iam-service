@@ -13,6 +13,7 @@ import co.sena.iam.domain.model.TokenClaims;
 import co.sena.iam.domain.model.TokenPolicy;
 import co.sena.iam.domain.model.User;
 import co.sena.iam.domain.model.UserAccess;
+import com.sun.net.httpserver.HttpServer;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import java.security.KeyPair;
@@ -22,6 +23,8 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
+import java.net.InetSocketAddress;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -103,6 +106,35 @@ class JwtAccessTokenTest {
         assertEquals(List.of("INSTRUCTOR"), claims.get("roles", List.class));
         assertEquals(FEATURE_SCOPES, claims.get("features", List.class));
         assertEquals(expiresAt.getEpochSecond(), claims.getExpiration().toInstant().getEpochSecond());
+    }
+
+    @Test
+    @DisplayName("non-LEARNER tokens do not query Actors or include ficha_id")
+    void doesNotLookupFichaForNonLearner() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        AtomicInteger calls = new AtomicInteger();
+        server.createContext("/active-ficha", exchange -> {
+            calls.incrementAndGet();
+            exchange.sendResponseHeaders(200, 0);
+            exchange.close();
+        });
+        server.start();
+        try {
+            var actors = new co.sena.iam.adapter.out.client.ActorsActiveFichaClient(
+                    "http://127.0.0.1:" + server.getAddress().getPort() + "/active-ficha/{user_id}",
+                    "", "", "", "");
+            Instant now = Instant.now();
+            String token = new JwtAccessTokenIssuer(keys(privateKeyPem), actors)
+                    .issue(user(), access(), FEATURE_SCOPES, SESSION_ID, now, now.plus(TokenPolicy.ACCESS_TOKEN_TTL));
+
+            Claims claims = Jwts.parser().verifyWith(keys(privateKeyPem).publicKey()).build()
+                    .parseSignedClaims(token).getPayload();
+            assertEquals("INSTRUCTOR", claims.get("actor_type", String.class));
+            assertTrue(claims.get("ficha_id") == null);
+            assertEquals(0, calls.get());
+        } finally {
+            server.stop(0);
+        }
     }
 
     @Test
