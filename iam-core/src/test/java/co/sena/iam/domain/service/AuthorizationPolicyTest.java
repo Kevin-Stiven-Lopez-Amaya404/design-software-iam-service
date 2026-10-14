@@ -239,4 +239,20 @@ class AuthorizationPolicyTest {
         assertThat(policy.effectiveFeatureScopes(profile, NOW))
                 .containsExactly("AAA_FIRST:GLOBAL", "ZZZ_LAST:GLOBAL");
     }
+
+    @Test
+    @DisplayName("AUDIT_EXPORT grants materialize with their role scopes for downstream authorization")
+    void auditExportGrantsMaterializeWithTheirDocumentedScopes() {
+        var globalProfile = new AuthorizationProfile(
+                List.of(new FeatureGrant("AUDIT_EXPORT", ScopeType.GLOBAL, null)),
+                List.of());
+        var centerProfile = new AuthorizationProfile(
+                List.of(new FeatureGrant("AUDIT_EXPORT", ScopeType.TRAINING_CENTER, CENTER_A)),
+                List.of());
+
+        assertThat(policy.effectiveFeatureScopes(globalProfile, NOW))
+                .containsExactly("AUDIT_EXPORT:GLOBAL");
+        assertThat(policy.effectiveFeatureScopes(centerProfile, NOW))
+                .containsExactly("AUDIT_EXPORT:TRAINING_CENTER");
+    }
 }
