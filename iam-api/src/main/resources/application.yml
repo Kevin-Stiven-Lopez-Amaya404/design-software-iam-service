@@ -33,6 +33,12 @@ iam:
     # rotation in progress. See GET /api/v1/auth/.well-known/jwks.json and authentication.md.
     previous-public-key: ${IAM_JWT_PREVIOUS_PUBLIC_KEY:}
     previous-key-id: ${IAM_JWT_PREVIOUS_KEY_ID:}
+  # HU-ACAD-10: one narrowly scoped service client; keep both values in the secret store.
+  m2m:
+    academic:
+      client-id: ${IAM_M2M_ACADEMIC_CLIENT_ID:}
+      client-secret: ${IAM_M2M_ACADEMIC_CLIENT_SECRET:}
+      token-ttl-seconds: ${IAM_M2M_TOKEN_TTL_SECONDS:300}
   # HU-IAM-007 outbox relay. The broker connection is configured through the standard Spring
   # env vars (SPRING_RABBITMQ_HOST, SPRING_RABBITMQ_USERNAME, SPRING_RABBITMQ_PASSWORD, and
   # optionally SPRING_RABBITMQ_PORT / SPRING_RABBITMQ_VIRTUAL_HOST). No secret defaults — when
